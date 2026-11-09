@@ -1,6 +1,6 @@
 # Phase 09: Reranker, pair collapse, and the refusal gate
 
-**Size:** ~3.5 h · **Depends on:** phase 08 merged · **Cost:** ~$0.05 (one luna-judged test answer eval; D64)
+**Size:** ~3.5 h · **Depends on:** phase 08 merged · **Cost:** ~$0.08 (one test answer eval; D64)
 
 ## Goal
 
@@ -42,7 +42,7 @@ A cross-encoder reranks the top-20 hybrid candidates, translations of the same p
    - `eval-retrieval --split test --label hybrid-rerank`
    - `eval-retrieval --split test --cross-lingual --label hybrid-rerank-xling`
    - `eval-retrieval --split dev --label hybrid-rerank`
-   - `eval-answers --split test --label rerank-gate` (test only, D64; default `--backend openai`, luna judge)
+   - `eval-answers --split test --label rerank-gate` (test only, D64; defaults: `--backend openai`, terra judge)
    (The no-rerank ablation is the phase 08 `hybrid` row. Any manual checks of the gate with `ask` use `LLM_BACKEND=ollama`; the gate itself makes no LLM call.)
 10. **Ratchet thresholds** with the new test summaries; `check-thresholds` passes. If `refusal_correct` went up but a retrieval metric dropped, report it honestly in HANDOFF.
 

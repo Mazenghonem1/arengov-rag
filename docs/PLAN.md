@@ -131,10 +131,10 @@ ask: messages → [rewrite] → retrieve(bm25 + dense → RRF → rerank → col
      USER_AGENT="ArEnGovRAG/0.1 (+https://github.com/Mazenghonem1/arengov-rag; non-commercial research)"
 [02] MIN_PAGE_CHARS=200, CHUNK_MAX_TOKENS=400, TOKENIZER_MODEL="BAAI/bge-m3"
 [03] BM25_K1=1.5, BM25_B=0.75, BM25_TOP_N=50, TOP_K_CONTEXT=5
-[04] LLM_BACKEND=os.environ.get("LLM_BACKEND","openai"), GEN_MODEL="gpt-5.6-luna",
-     JUDGE_MODEL=os.environ.get("JUDGE_MODEL","gpt-5.6-luna"), OLLAMA_MODEL="qwen3:8b", OLLAMA_BASE_URL="http://localhost:11434/v1",
+[04] LLM_BACKEND=os.environ.get("LLM_BACKEND","openai"), GEN_MODEL="gpt-6-luna",
+     JUDGE_MODEL=os.environ.get("JUDGE_MODEL","gpt-6.1-terra"), OLLAMA_MODEL="qwen3:8b", OLLAMA_BASE_URL="http://localhost:11434/v1",
      REASONING_EFFORT=<lowest value the API accepts, found in phase 04>,
-     GEN_MAX_TOKENS=1024, PRICES_PER_M={"gpt-5.6-luna": (0.20, 1.20), "gpt-5.6-terra": (2.00, 12.00)},
+     GEN_MAX_TOKENS=1024, PRICES_PER_M={"gpt-6-luna": (0.10, 0.50), "gpt-6.1-terra": (1.00, 5.00)},
      SNIPPET_MAX_CHARS=300
 [07] JUDGE_MAX_TOKENS=800
 [08] EMBED_MODEL="BAAI/bge-m3", DENSE_TOP_N=50, RRF_K=60, FUSED_TOP_N=20
@@ -151,24 +151,24 @@ Retrieval: `recall@5`, `recall@20`, `mrr@10`, computed on answerable questions o
 
 `crawl`, `diff`, `build-index`, `search`, `ask`, `sample-pages`, `validate-eval`, `assign-splits`, `eval-retrieval`, `eval-answers`, `set-thresholds`, `check-thresholds`, `pick-tau`, `judge-export`, `judge-agreement`, `upload-index`, `download-index`. The ops scripts live in `scripts/` (`ops_report.py`, `export_bad_feedback.py`).
 
-**LLM flags (D63, D67):** `ask` uses `LLM_BACKEND` from the environment (`ollama` locally, so ad-hoc testing is free). The eval commands (`eval-retrieval`, `eval-answers`, `pick-tau`) take `--backend openai|ollama` **defaulting to `openai`**. `eval-answers` also takes `--judge-model` (default `config.JUDGE_MODEL` = `gpt-5.6-luna`; `gpt-5.6-terra` only in phases 11 and 17). Every answer summary records `backend`, `gen_model` and `judge_model`.
+**LLM flags (D67, D68):** `ask` uses `LLM_BACKEND` from the environment (`ollama` locally, so ad-hoc testing is free). The eval commands (`eval-retrieval`, `eval-answers`, `pick-tau`) take `--backend openai|ollama` **defaulting to `openai`**. `eval-answers` also takes `--judge-model` (default `config.JUDGE_MODEL` = `gpt-6.1-terra`; every phase uses the default). Every answer summary records `backend`, `gen_model` and `judge_model`.
 
 ## Estimated OpenAI spend
 
-Budget: **$5 total credit** (D66). Unit costs are estimated from the 2026-11-09 prices: luna answer ≈ $0.001 (generation), luna judge ≈ $0.001 per answer, terra judge ≈ $0.01 per answer. A luna-judged answer eval costs ≈ $0.04 on test (20 q) and ≈ $0.08 on dev (40 q). Phase 04 measures the real cost per query; if it's above $0.002, recompute this table in HANDOFF.
+Budget: **$5 total credit** (D66). Unit costs are estimated from the 2026-11-09 prices (D68): a `gpt-6-luna` answer ≈ $0.0005, a `gpt-6.1-terra` judgment ≈ $0.0045. An answer eval costs ≈ $0.08 on test (20 q, ~16 judged) and ≈ $0.16 on dev (40 q). Phase 04 measures the real cost per query; if it's above $0.001, recompute this table in HANDOFF.
 
 | Where | What | Est. |
 |---|---|---|
 | 04 | reasoning-effort probe + 2 OpenAI smoke calls (rest on Ollama) | $0.01 |
-| 07 | answer baseline dev + test (luna judge) | $0.12 |
-| 08 | answer eval test | $0.04 |
-| 09 | answer eval test | $0.04 |
-| 10 | answer evals dev + test, rewrites in retrieval evals, τ re-pick, demo checks | $0.16 |
-| 11 | terra re-judge of ~45 answers, plus one possible revision round | $0.45–0.90 |
-| 15 | CI retrieval evals (~$0.002 each × ~30) + ~3 manual answer-eval dispatches | $0.20 |
-| 16 | live smoke test + 20-request latency probe | $0.05 |
-| 17 | terra re-judge of the 2 README answer rows (+ one luna re-run if phase 16 changed the pipeline) | $0.45 |
-| **Development total** | | **≈ $1.5–2.0** |
-| Live demo | ≤ 100 questions/day × ~$0.001 (worst case ≈ $3/month) | rest of the credit |
+| 07 | answer baseline dev + test | $0.24 |
+| 08 | answer eval test | $0.08 |
+| 09 | answer eval test | $0.08 |
+| 10 | answer evals dev + test, rewrites in retrieval evals, τ re-pick, demo checks | $0.26 |
+| 11 | only if the judge prompt is revised: re-judge ~45 answers once | $0–0.20 |
+| 15 | CI retrieval evals (~$0.001 each × ~30) + ~3 manual answer-eval dispatches | $0.27 |
+| 16 | live smoke test + 20-request latency probe | $0.03 |
+| 17 | Qwen row judging (+ one luna re-run if phase 16 changed the pipeline) | $0.07–0.15 |
+| **Development total** | | **≈ $1.0–1.3** |
+| Live demo | ≤ 100 questions/day × ~$0.0005 (worst case ≈ $1.50/month) | rest of the credit |
 
 Each phase's HANDOFF records its OpenAI spend (from eval summaries and the OpenAI dashboard), so drift shows up early.

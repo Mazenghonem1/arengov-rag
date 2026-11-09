@@ -1,6 +1,6 @@
 # Phase 07: Answer evaluation, LLM judge, baseline and thresholds
 
-**Size:** ~4 h · **Depends on:** phase 06 merged · **Cost:** ~$0.15 of OpenAI (budget: $5 total, D66)
+**Size:** ~4 h · **Depends on:** phase 06 merged · **Cost:** ~$0.25 of OpenAI (budget: $5 total, D66)
 
 ## Goal
 
@@ -12,7 +12,7 @@
   - `refusal_correct` = `refused == (not answerable)`, over all questions.
   - `lang_match` = `detect_lang(answer without [n] markers and URLs) == question.lang`, over all questions, refusals included.
   - `citation_valid` = ≥1 citation and no invalid markers, over answered (non-refused) questions.
-- **Judge** (D28, D36, D63): `config.JUDGE_MODEL` (default `gpt-5.6-luna`, `role="judge"`), overridable per run with `--judge-model`. All development runs and CI use luna; `gpt-5.6-terra` is used only in phases 11 and 17. One call per answer, structured JSON with a reason and a pass/fail for `faithfulness`, `correctness`, `citation_accuracy`. It runs only on **answerable questions that were answered**.
+- **Judge** (D28, D36, D68): `config.JUDGE_MODEL` = `gpt-6.1-terra` (`role="judge"`), the one judge for every run: development, CI, validation (phase 11) and the README. `--judge-model` exists for experiments only. One call per answer, structured JSON with a reason and a pass/fail for `faithfulness`, `correctness`, `citation_accuracy`. It runs only on **answerable questions that were answered**.
 - Multi-turn: until phase 10, `pipeline.answer` sees all user turns but uses only the last (D58). The eval passes the turns as user messages.
 - Language: the eval calls `answer(messages, answer_lang="auto")` so detection is tested too.
 - Ops metrics per run: `latency_p50_ms`, `latency_p95_ms`, `cost_per_q_usd` (generation cost only; judge cost reported separately as `eval_cost_usd`).
@@ -59,7 +59,7 @@
    - Keep going on errors: log them, count them in the summary as `errors`, and treat that question as failing every check.
    - Summary `{kind: "answers", label, split, index_version, git_sha, timestamp, backend, gen_model, judge_model, n, n_judged, errors, metrics: {...}, by_lang, by_type, eval_cost_usd}`. Write it plus per-question details (answer, citations, refused, checks, judge reasons, latency, cost) as in phase 06. `--record` appends a row to `docs/results.md` (answer columns filled including `backend` and `judge`, retrieval columns `—`). `--out PATH` copies the summary.
    - Print the summary table and the ids of failed checks per metric.
-   - `rejudge(details_path, judge_model=None, label=None, record=False)` re-runs only the judge on stored outputs (used in phases 11 and 17 with `gpt-5.6-terra`). It needs the stored chunk texts: the details lines keep `final_chunk_ids`, and `rejudge` re-reads the texts from the index of the same `index_version`. It writes a new summary + details (label defaults to `<original label>-rejudge-<judge model>`) that keep the original generation metrics (latency, cost, deterministic checks) and replace only the judge metrics and `judge_model`.
+   - `rejudge(details_path, judge_model=None, label=None, record=False)` re-runs only the judge on stored outputs (used when phase 11 revises the judge prompt). It needs the stored chunk texts: the details lines keep `final_chunk_ids`, and `rejudge` re-reads the texts from the index of the same `index_version`. It writes a new summary + details (label defaults to `<original label>-rejudge-<judge model>`) that keep the original generation metrics (latency, cost, deterministic checks) and replace only the judge metrics and `judge_model`.
 5. **Thresholds:**
    - `set-thresholds RETRIEVAL_SUMMARY ANSWERS_SUMMARY`: both must be test-split summaries. Compute per the rule above, ratchet against the existing `eval/thresholds.json` (`{"split": "test", "retrieval": {...}, "answers": {...}}`), write it, and print old → new.
    - `check-thresholds SUMMARY [SUMMARY…]`: compare each gated metric present in the summaries; print a pass/fail table; exit 1 if any value is below its threshold.
@@ -70,7 +70,7 @@
    - the threshold rule: 0.734 → 0.65, 0.70 → 0.65, 1.0 → 0.95, 0.04 → 0.0;
    - the ratchet keeps a higher old value;
    - `check-thresholds` exits 1 on one failure and 0 when all pass.
-8. **Baseline runs** (with `--record`, luna judge): `eval-answers --split dev --label bm25-baseline`, then `--split test --label bm25-baseline` (~$0.12 total). Then `set-thresholds <phase-06 bm25-baseline test retrieval summary> <today's test answers summary>`, and `check-thresholds` on both (must pass).
+8. **Baseline runs** (with `--record`): `eval-answers --split dev --label bm25-baseline`, then `--split test --label bm25-baseline` (~$0.24 total). Then `set-thresholds <phase-06 bm25-baseline test retrieval summary> <today's test answers summary>`, and `check-thresholds` on both (must pass).
 9. **Read the failures:** for dev, list each judge-failed or refusal-failed question with the judge's reason and a one-line cause guess (retrieval miss, hallucination, language drift, over-refusal). Put the top 5 in HANDOFF.
 
 ## Files
@@ -81,7 +81,7 @@ Create: `src/arengov/judge.py`, `src/arengov/eval_answers.py`, `tests/test_eval_
 
 - `uv run pytest -m "not slow"` passes; ruff clean.
 - Two answer rows in `docs/results.md`; `eval/thresholds.json` committed; `check-thresholds` passes on the test summaries.
-- `eval_cost_usd` of the test run ≤ $0.10 (printed). If it's higher, stop and tell the owner before running anything else (the $5 budget assumes ~$0.04).
+- `eval_cost_usd` of the test run ≤ $0.15 (printed). If it's higher, stop and tell the owner before running anything else (the $5 budget assumes ~$0.08).
 - Tests also cover: `--backend` defaults to `openai` even with `LLM_BACKEND=ollama` in the environment; `--judge-model` reaches `llm.complete`; the summary records `judge_model`.
 
 ## Out of scope
@@ -97,7 +97,7 @@ The judge is used as-is here; validating it against the owner's grades is phase 
   - bad citation = the right facts attributed to the wrong source.
 - **Reason-then-verdict** and **strict JSON schemas:** why both make an LLM judge more reliable and parseable.
 - **Regression thresholds as a ratchet:** a gate stops quality from silently dropping; the 5-point margin absorbs noise from a 20-question test set.
-- **Cost of evaluation:** what a full run costs, why development uses the cheap luna judge (good enough to spot regressions) while headline numbers get the validated terra judge, and why CI runs the answer eval only on manual dispatch.
+- **Cost of evaluation:** what a full run costs (the judge is most of it), why one judge everywhere keeps every number comparable, and why CI runs the answer eval only on manual dispatch.
 
 ## Handoff checklist
 

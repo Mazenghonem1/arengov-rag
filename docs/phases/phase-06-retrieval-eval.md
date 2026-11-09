@@ -34,7 +34,7 @@
    ```
    | date | label | split | index | mode | xling | rerank | norm | recall@5 | recall@20 | mrr@10 | backend | judge | refusal | lang | cite valid | faithful | correct | cite acc | p95 ms | $/q |
    ```
-   Retrieval rows fill the retrieval columns and put `—` in the answer columns (`backend`, `judge` and after). The `judge` column matters because development rows use the luna judge and the final README rows use terra (D63). Rates are shown as percentages with no decimals.
+   Retrieval rows fill the retrieval columns and put `—` in the answer columns (`backend`, `judge` and after). Every phase uses the `gpt-6.1-terra` judge (D68); the `judge` column makes that explicit and catches any run that used a different one. Rates are shown as percentages with no decimals.
 3. **CLI:** `eval-retrieval --split dev|test|all --label NAME [--mode bm25] [--cross-lingual] [--no-norm] [--no-rerank] [--record] [--out PATH]`.
 4. **Tests** (`tests/test_eval_retrieval.py`): `hit_at` / `rr_at` on hand-made lists (gold at rank 1, at rank 7 with k=5 and k=10, absent, duplicate pages); `run` on 3 synthetic questions with `pipeline.retrieve` and the index monkeypatched, checking the metric values and that unanswerable questions are excluded.
 5. **Baseline runs** (all with `--record`):

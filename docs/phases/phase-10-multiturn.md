@@ -1,6 +1,6 @@
 # Phase 10: Multi-turn follow-ups via query rewriting, and demo examples
 
-**Size:** ~2.5 h · **Depends on:** phase 09 merged · **Cost:** ~$0.20 (luna-judged dev + test answer evals, rewrites, demo checks)
+**Size:** ~2.5 h · **Depends on:** phase 09 merged · **Cost:** ~$0.26 (dev + test answer evals, rewrites, demo checks)
 
 ## Goal
 
@@ -45,8 +45,8 @@ Follow-up questions ("and for my wife?", "وماذا عن تجديدها؟") are
 7. **Eval runs** (`--record`):
    - `eval-retrieval --split test --label rewrite`
    - `eval-retrieval --split dev --label rewrite`
-   - `eval-answers --split dev --label rewrite` (luna judge)
-   - `eval-answers --split test --label rewrite` (luna judge; phase 17 re-judges these stored test answers with terra for the README, so keep `eval/results/details/` on disk)
+   - `eval-answers --split dev --label rewrite`
+   - `eval-answers --split test --label rewrite` (phase 11 grades these stored answers and phase 17 may reuse them for the README, so keep `eval/results/details/` on disk)
    Compare the `multi_turn` row of `by_type` with phase 09 and put both numbers in HANDOFF.
 8. **Ratchet thresholds**; `check-thresholds` passes.
 9. **Choose the demo examples.** From the latest dev+test answer details, list candidates:

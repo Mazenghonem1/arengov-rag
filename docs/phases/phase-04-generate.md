@@ -12,10 +12,10 @@
 
 ## Decisions that apply
 
-- Generator `gpt-5.6-luna`, local `qwen3:8b`; backend via `LLM_BACKEND=openai|ollama` (D27). Judge model = `config.JUDGE_MODEL`, which reads env `JUDGE_MODEL` and defaults to `gpt-5.6-luna`; `gpt-5.6-terra` is passed explicitly only in phases 11 and 17 (D63). Prices per 1M tokens: luna $0.20 in / $1.20 out, terra $2.00 / $12.00 (checked 2026-11-09).
-- **Budget (D66, D67):** $5 of OpenAI credit in total. Ad-hoc testing uses `LLM_BACKEND=ollama`; this phase makes only the few OpenAI calls listed in tasks 2 and 8.
+- Generator `gpt-6-luna`, local `qwen3:8b`; backend via `LLM_BACKEND=openai|ollama` (D27, D68). Judge model = `config.JUDGE_MODEL`, which reads env `JUDGE_MODEL` and defaults to `gpt-6.1-terra`, the one judge used everywhere (D68). Prices per 1M tokens: luna $0.10 in / $0.50 out, terra $1.00 / $5.00 (checked 2026-11-09).
+- **Budget (D66, D67):** $5 of OpenAI credit in total. Ad-hoc testing uses `LLM_BACKEND=ollama`; this phase makes only the few OpenAI calls listed in tasks 2, 8 and 9.
 - **One client** (D29): the `openai` SDK Chat Completions API for both backends; Ollama through `base_url=OLLAMA_BASE_URL`, `api_key="ollama"`. Ollama: append `"\n/no_think"` to the system prompt and strip `<think>…</think>` (regex, DOTALL) from the output. Ollama cost = 0.
-- `role="judge"` **always** uses OpenAI with `config.JUDGE_MODEL` (read at call time, so a CLI flag can override it), whatever `LLM_BACKEND` says (D28, D63).
+- `role="judge"` **always** uses OpenAI with `config.JUDGE_MODEL` (read at call time, so a CLI flag can override it), whatever `LLM_BACKEND` says (D28, D68).
 - Prompt (D26): numbered context blocks; cite `[n]` after every factual sentence; answer in the target language (MSA for Arabic); exactly `NO_ANSWER` when the sources lack the answer. Plain-text output; parse `[n]` with a regex; remove and log out-of-range markers.
 - Answer language = `answer_lang` if given, else `detect_lang(question)` (D15).
 - Refusal: the localized message + up to 3 closest distinct pages from the retrieved chunks, as citations numbered 1–3 (PLAN.md § `pipeline.answer` returns). The retrieval gate (layer a of D26) arrives in phase 09.
@@ -23,7 +23,7 @@
 ## Tasks
 
 1. `uv add openai`. Add the `[04]` constants to `config.py`.
-2. **Find `REASONING_EFFORT`:** call `gpt-5.6-luna` with a 1-line prompt and `reasoning_effort` set to `"none"`, then `"minimal"`, then `"low"`; the first value that doesn't return a 400 goes into `config.REASONING_EFFORT`. Record it in HANDOFF.
+2. **Find `REASONING_EFFORT`:** call `gpt-6-luna` with a 1-line prompt and `reasoning_effort` set to `"none"`, then `"minimal"`, then `"low"`; the first value that doesn't return a 400 goes into `config.REASONING_EFFORT`. Record it in HANDOFF.
 3. **`src/arengov/llm.py`:**
    - `@dataclass LLMResult(text, input_tokens, output_tokens, latency_ms, cost_usd, model)`.
    - `complete(system, messages, max_tokens, *, role="gen", json_schema=None)`:
@@ -71,7 +71,8 @@
    - `generate`: fake `NO_ANSWER` → `no_answer=True`.
    - `llm.complete`: the ollama path strips `<think>` and appends `/no_think`; `role="judge"` uses OpenAI even with `LLM_BACKEND=ollama`; cost is computed from a fake usage object.
    - `pipeline.answer` with `retrieve` and `complete` faked: citations mapped to the right chunks; the refusal path returns ≤3 distinct pages; `lang` auto-detected.
-8. **Manual smoke test.** First with `--backend ollama` (free): 2 EN questions, 2 AR questions, 1 off-topic ("best shawarma in Dubai"). Then **only 2 OpenAI calls** (1 EN, 1 AR, `--backend openai`; cost < $0.01) to verify the OpenAI path and measure the real cost per query. Show the owner. Note anything odd (language drift, missing citations). If the measured OpenAI cost per query is above $0.002, flag it in HANDOFF (PLAN.md § Estimated OpenAI spend assumes ~$0.001).
+8. **Manual smoke test.** First with `--backend ollama` (free): 2 EN questions, 2 AR questions, 1 off-topic ("best shawarma in Dubai"). Then **only 2 OpenAI calls** (1 EN, 1 AR, `--backend openai`; cost < $0.01) to verify the OpenAI path and measure the real cost per query. Show the owner. Note anything odd (language drift, missing citations). If the measured OpenAI cost per query is above $0.001, flag it in HANDOFF (PLAN.md § Estimated OpenAI spend assumes ~$0.0005).
+9. **Judge model probe** (one call, < $0.01): call `gpt-6.1-terra` once with `role="judge"`, a tiny JSON schema (`{"ok": boolean}`, strict) and the chosen `REASONING_EFFORT`. If the model rejects `reasoning_effort` or `response_format` json_schema, record exactly what failed in HANDOFF; phase 07 depends on both.
 
 ## Files
 
