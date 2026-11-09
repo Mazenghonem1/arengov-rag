@@ -1,0 +1,37 @@
+[project]
+name = "arengov"
+version = "0.1.0"
+description = "Bilingual Arabic-English RAG assistant over public UAE government-services pages"
+readme = "README.md"
+authors = [
+    { name = "Mazen Ghonem", email = "167409228+Mazenghonem1@users.noreply.github.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.4",
+]
+
+[project.scripts]
+arengov = "arengov.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: loads ML models or uses the network"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]

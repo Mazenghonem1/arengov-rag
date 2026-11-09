@@ -4,34 +4,41 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** planning session (no code yet)
+**Phase:** 00-setup
 **Date:** 2026-11-09
-**Status:** done
+**Status:** done (Claude part); [YOU] tasks pending
 
 **Done**
-- Grilling complete: decisions D1–D68 in `docs/DECISIONS.md` (D63–D67 = budget change to $5 of OpenAI credit; D68 = `gpt-6-luna` generator + `gpt-6.1-terra` as the one judge).
-- Wrote `CLAUDE.md`, `docs/PRD.md`, `docs/PLAN.md`, `docs/phases/phase-00…17`, this file.
-- `git init` + one local commit. Nothing pushed yet.
+- Public repo `Mazenghonem1/arengov-rag` created; planning commits on `main`; work on `phase-00-setup`.
+- uv package (`httpx`, `python-dotenv`; dev `pytest`, `ruff`), `config.py` path constants, argparse CLI skeleton, `tests/test_cli.py`, ruff/pytest config.
+- `.gitignore` extended, `.env.example`, MIT `LICENSE`, README stub with bilingual disclaimer, `docs/legal/tdra-request.md`, CI `test` job.
 
-**Deviations from plan:** none.
+**Deviations from plan**
+- `astral-sh/setup-uv` has no floating major tag, so CI pins `v10.3.3`.
+- `uv init` wrote a `[project.scripts]` entry; repointed to `arengov.__main__:main`.
+- `# noqa: F841` on the unused `sub` in `__main__.py` until phase 01 adds subcommands.
+- Skipped `git pull` before branching (no remote existed yet).
 
-**Metrics:** none yet.
+**Metrics:** tests: 1 passed. ruff clean.
+
+**OpenAI spend:** $0 / $0
 
 **Open issues**
-- [YOU] Docker Desktop is not installed (needed from phase 12). Install any time before then.
-- [YOU] Global git identity is empty; phase 00 sets a repo-local one.
+- [YOU] Send the TDRA email (fill in `[contact address]`); note the date here. Sent: not yet.
+- [YOU] Create/check `.env` from `.env.example`; set the $5 monthly budget in the OpenAI dashboard.
+- Hugging Face username confirmed: `mazenghonem` (differs from GitHub `Mazenghonem1`; D53 and phase 15 updated).
 
-- OpenAI credit is $5 in total; estimated development spend ≈ $1.0–1.3 (PLAN.md § Estimated OpenAI spend). Spent so far: $0.
+**Notes for next phase**
+- Run `uv sync` after pulling. Python 3.12 is managed by uv.
 
-**Notes for next phase (00)**
-- `uv` is installed; Python is not on PATH, so let `uv` install 3.12.
-- GitHub CLI is logged in as `Mazenghonem1`.
+**Commit:** see PR
 
 ## History
 
 | Phase | Date | Result | Key metric |
 |---|---|---|---|
 | planning | 2026-11-09 | done | — |
+| 00 setup | 2026-11-09 | done | CI green |
 
 ---
 
