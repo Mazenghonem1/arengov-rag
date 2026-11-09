@@ -19,8 +19,8 @@ The built index lives in a private Hugging Face dataset repo, versioned. GitHub 
 
 ## Tasks
 
-0. **[YOU]** On huggingface.co: create (1) a **write** token for uploads (store it locally as `HF_TOKEN` in `.env`) and (2) a fine-grained **read** token limited to the `arengov-index` repo for CI and the Space. Add the GitHub secrets yourself, because values must not pass through the chat: `gh secret set HF_TOKEN` (paste the read token) and `gh secret set OPENAI_API_KEY`. Tell Claude your HF username if it isn't `Mazenghonem1`.
-1. `uv add huggingface_hub` (if not already present). Add `HF_INDEX_REPO = f"{os.environ.get('HF_USER', 'Mazenghonem1')}/arengov-index"` to `config.py`.
+0. **[YOU]** On huggingface.co: create (1) a **write** token for uploads (store it locally as `HF_TOKEN` in `.env`) and (2) a fine-grained **read** token limited to the `arengov-index` repo for CI and the Space. Add the GitHub secrets yourself, because values must not pass through the chat: `gh secret set HF_TOKEN` (paste the read token) and `gh secret set OPENAI_API_KEY`. HF username: `mazenghonem` (confirmed in phase 00).
+1. `uv add huggingface_hub` (if not already present). Add `HF_INDEX_REPO = f"{os.environ.get('HF_USER', 'mazenghonem')}/arengov-index"` to `config.py`.
 2. **`index.py`:**
    - `upload_index(version)`: `HfApi().create_repo(HF_INDEX_REPO, repo_type="dataset", private=True, exist_ok=True)`, then `upload_folder(folder_path=INDEX_ROOT/version, path_in_repo=version, repo_id=…, repo_type="dataset", commit_message=f"index {version}")`.
    - `download_index(version)`: `snapshot_download(repo_id=…, repo_type="dataset", allow_patterns=[f"{version}/*"], local_dir=INDEX_ROOT)`.

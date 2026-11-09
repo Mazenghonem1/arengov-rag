@@ -26,8 +26,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 **Open issues**
 - [YOU] Send the TDRA email (fill in `[contact address]`); note the date here. Sent: not yet.
 - [YOU] Create/check `.env` from `.env.example`; set the $5 monthly budget in the OpenAI dashboard.
-- [YOU] Confirm Hugging Face username (D53 assumes `Mazenghonem1`).
-- [YOU] Install Docker Desktop before phase 12.
+- Hugging Face username confirmed: `mazenghonem` (differs from GitHub `Mazenghonem1`; D53 and phase 15 updated).
 
 **Notes for next phase**
 - Run `uv sync` after pulling. Python 3.12 is managed by uv.
