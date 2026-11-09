@@ -4,7 +4,7 @@
 
 ## Goal
 
-The built index lives in a private Hugging Face dataset repo, versioned. GitHub Actions downloads the pinned version and **fails a PR when retrieval or answer quality drops below `eval/thresholds.json`**, and a deliberate regression proves it.
+The built index lives in a private Hugging Face dataset repo, versioned. GitHub Actions downloads the pinned version and **fails a PR when retrieval quality drops below `eval/thresholds.json`**. A manual workflow runs the same check for answer quality, and a deliberate regression proves the gate.
 
 ## Decisions that apply
 
@@ -12,7 +12,8 @@ The built index lives in a private Hugging Face dataset repo, versioned. GitHub 
 - CI jobs (D47):
   - `test` (exists): every push/PR.
   - `eval-retrieval`: on push to main and every PR. It downloads the pinned index (`eval/index_version.txt`), caches HF models with `actions/cache`, runs retrieval eval on **test**, then `check-thresholds`. It needs `OPENAI_API_KEY` for the multi-turn rewrites (~$0.002, D58) and `HF_TOKEN`.
-  - `eval-answers`: on PRs that touch generation-related files, plus `workflow_dispatch`. Full answer eval on **test** (~$0.25), then `check-thresholds`.
+  - `eval-answers`: **only `workflow_dispatch`** (manual), never on PRs (D65). Full answer eval on **test** with the default luna judge (~$0.04), then `check-thresholds`. From this phase on, a phase that changes generation-related files triggers it with `gh workflow run eval-answers.yml --ref <branch>` and reports the result in its PR (CLAUDE.md working rule 6).
+- OpenAI credit is $5 in total (D66). The retrieval job costs ~$0.002 per run (multi-turn rewrites).
 - CI never crawls and never rebuilds the index. Changing cleaning/chunking/embedding means rebuilding locally, `upload-index`, and bumping `eval/index_version.txt` in the same PR (D47, CLAUDE.md hard rules).
 - Secrets: `OPENAI_API_KEY`, `HF_TOKEN` as GitHub Actions secrets (D48).
 
@@ -34,10 +35,10 @@ The built index lives in a private Hugging Face dataset repo, versioned. GitHub 
    - `uv run python -m arengov eval-retrieval --split test --label ci --out ci-retrieval.json`;
    - `uv run python -m arengov check-thresholds ci-retrieval.json`;
    - upload `ci-retrieval.json` as an artifact.
-6. **`.github/workflows/eval-answers.yml`:** `on: pull_request` with `paths`: `src/arengov/generate.py`, `llm.py`, `rewrite.py`, `pipeline.py`, `retrieve.py`, `rerank.py`, `judge.py`, `eval_answers.py`, `config.py`, `eval/questions.jsonl`, `eval/thresholds.json`, `eval/index_version.txt`; plus `workflow_dispatch`. One job with the same setup, then `eval-answers --split test --label ci --out ci-answers.json`, `check-thresholds ci-answers.json`, and the artifact upload.
+6. **`.github/workflows/eval-answers.yml`:** `on: workflow_dispatch` only. One job with the same setup as `eval-retrieval`, then `eval-answers --split test --label ci --out ci-answers.json` (defaults: `--backend openai`, luna judge), `check-thresholds ci-answers.json`, and the artifact upload. Add a comment at the top of the file: "Manual only to save OpenAI credit (D65). Run with: gh workflow run eval-answers.yml --ref <branch>".
 7. **README:** add the CI badge for `ci.yml` at the top.
-8. **Prove the gate** on a throwaway branch `gate-demo` from this phase's branch: set `TOP_K_CONTEXT = 1` in `config.py`, push, and open a draft PR titled "Demo: eval gate catches a regression (do not merge)". Both eval jobs should go red on `recall@5` (and answer metrics). Save the PR link for the README, then close the PR without merging and delete the branch.
-9. Commit, push this phase's branch, and open the PR. All checks should be green, and `eval-answers` runs because this PR touches `config.py`.
+8. **Prove the gate** on a throwaway branch `gate-demo` from this phase's branch: set `TOP_K_CONTEXT = 1` in `config.py`, push, and open a draft PR titled "Demo: eval gate catches a regression (do not merge)". The `eval-retrieval` check should go red on `recall@5`; don't dispatch the answer workflow for it (no spend needed to prove the gate). Save the PR link for the README, then close the PR without merging and delete the branch.
+9. Commit, push this phase's branch, and open the PR. `test` and `eval-retrieval` should be green. Then trigger the answer gate once on this branch (`gh workflow run eval-answers.yml --ref phase-15-ci-gates`, ~$0.04), wait for it with `gh run watch`, and link the green run in the PR body.
 
 ## Files
 
@@ -46,8 +47,8 @@ Create: `.github/workflows/eval-answers.yml`. Change: `.github/workflows/ci.yml`
 ## Acceptance criteria
 
 - `uv run pytest -m "not slow"` passes; ruff clean.
-- The phase PR shows `test`, `eval-retrieval` and `eval-answers` all green, with CI metrics matching the latest local test rows (identical, or within one question).
-- The `gate-demo` PR showed red eval checks, and its link is saved in HANDOFF.
+- The phase PR shows `test` and `eval-retrieval` green, and one manual `eval-answers` run on the branch is green; CI metrics match the latest local test rows (identical, or within one question).
+- The `gate-demo` PR showed a red `eval-retrieval` check, and its link is saved in HANDOFF.
 - The HF dataset repo is **private** (check it in the browser while logged out, or via `HfApi().repo_info(...).private`).
 
 ## Out of scope
@@ -57,7 +58,7 @@ CI uses the pinned index and only evaluates; deployment is phase 16. The schedul
 ## What you should understand after this phase
 
 - **Eval as a CI gate:** the same idea as unit tests, applied to model quality. A PR that silently makes answers worse can't merge.
-- **Why retrieval runs on every PR and answers only on some:** cost and time vs risk.
+- **Why retrieval runs on every PR and answers only on manual dispatch:** retrieval eval is nearly free, while answer eval spends a limited credit, so it runs when you deliberately ask for it.
 - **Pinned artifacts:** CI evaluates a fixed index version, so a metric change can come only from the code in the PR.
 - **Secrets hygiene:** least-privilege read token for CI, write token only on your machine, secrets entered by you instead of passing through chat.
 - **Proving a safety mechanism works** by breaking things on purpose.
@@ -65,6 +66,6 @@ CI uses the pinned index and only evaluates; deployment is phase 16. The schedul
 ## Handoff checklist
 
 - [ ] Acceptance criteria pass.
-- [ ] HANDOFF: the HF repo id, the uploaded version, CI run times per job, the gate-demo PR link.
+- [ ] HANDOFF: the HF repo id, the uploaded version, CI run times per job, the gate-demo PR link, the manual answer-gate run link, OpenAI spend.
 - [ ] Committed on `phase-15-ci-gates`, pushed, PR open.
 - [ ] Told the owner: merge when green, `/clear`, next is phase 16 (needs a Neon account).

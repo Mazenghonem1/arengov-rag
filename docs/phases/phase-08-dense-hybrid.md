@@ -1,6 +1,6 @@
 # Phase 08: Dense embeddings, hybrid retrieval with RRF
 
-**Size:** ~3.5 h (includes ~15–30 min of embedding on the GPU) · **Depends on:** phase 07 merged · **Cost:** ~$0.30
+**Size:** ~3.5 h (includes ~15–30 min of embedding on the GPU) · **Depends on:** phase 07 merged · **Cost:** ~$0.05 (one luna-judged test answer eval; D64)
 
 ## Goal
 
@@ -63,7 +63,7 @@ Chunks get bge-m3 embeddings, retrieval runs BM25 and dense search in parallel a
     - `eval-retrieval --mode dense --cross-lingual --label dense-xling`
     - `eval-retrieval --mode hybrid --cross-lingual --label hybrid-xling`
     - `eval-retrieval --split dev --mode hybrid --label hybrid`
-    - `eval-answers --split test --label hybrid`
+    - `eval-answers --split test --label hybrid` (test only, D64; default `--backend openai`, luna judge)
 11. **Ratchet thresholds:** `set-thresholds <hybrid test retrieval summary> <hybrid test answers summary>`; `check-thresholds` passes.
 12. In HANDOFF, write the comparison: BM25 vs dense vs hybrid (recall@5, MRR@10, xling recall@5) and one sentence on what it shows.
 

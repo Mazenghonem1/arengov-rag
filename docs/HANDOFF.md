@@ -9,7 +9,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 **Status:** done
 
 **Done**
-- Grilling complete: decisions D1–D62 in `docs/DECISIONS.md`.
+- Grilling complete: decisions D1–D67 in `docs/DECISIONS.md` (D63–D67 = budget change to $5 of OpenAI credit).
 - Wrote `CLAUDE.md`, `docs/PRD.md`, `docs/PLAN.md`, `docs/phases/phase-00…17`, this file.
 - `git init` + one local commit. Nothing pushed yet.
 
@@ -20,6 +20,8 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 **Open issues**
 - [YOU] Docker Desktop is not installed (needed from phase 12). Install any time before then.
 - [YOU] Global git identity is empty; phase 00 sets a repo-local one.
+
+- OpenAI credit is $5 in total; estimated development spend ≈ $1.5–2.0 (PLAN.md § Estimated OpenAI spend). Spent so far: $0.
 
 **Notes for next phase (00)**
 - `uv` is installed; Python is not on PATH, so let `uv` install 3.12.
@@ -48,6 +50,9 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 **Metrics** (copy the rows this phase added to docs/results.md; tests: N passed)
 - …
+
+**OpenAI spend** (this phase / cumulative vs the $5 credit; estimate in PLAN.md § Estimated OpenAI spend)
+- $… / $…
 
 **Open issues** (bugs, risks, anything left undone, with an owner)
 - …

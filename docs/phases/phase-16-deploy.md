@@ -11,7 +11,7 @@ A public URL serves the app on a free HF Space, sending traces to a second Space
 - Hosting (D44, D39):
   - **App Space** `arengov-rag`: Docker SDK, free CPU basic, the Dockerfile from phase 14, port 7860. Index downloaded at startup from the private dataset with a read `HF_TOKEN` (phase 15 `load_index`).
   - **Phoenix Space** `arengov-phoenix`: Docker SDK, `FROM arizephoenix/phoenix:<same pinned tag as compose>`, `PHOENIX_SQL_DATABASE_URL` = the Neon Postgres URL (persistent; Space disks are ephemeral), auth enabled, 30-day retention.
-- Space secrets (D48): App gets `OPENAI_API_KEY`, `HF_TOKEN` (read), `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_API_KEY`. Phoenix gets `PHOENIX_SQL_DATABASE_URL`, `PHOENIX_SECRET`, plus the auth settings for the pinned version.
+- Space secrets (D48): App gets `OPENAI_API_KEY`, `HF_TOKEN` (read), `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_API_KEY`. **Leave `LLM_BACKEND` unset on the Space** so it defaults to `openai` (D67). `DAILY_CAP = 100`, and exhausted credit returns the "demo paused" response (D66). Phoenix gets `PHOENIX_SQL_DATABASE_URL`, `PHOENIX_SECRET`, plus the auth settings for the pinned version.
 - **Rerank fallback (D25):** measure the p95 of the `rerank` span on the live Space over ≥ 20 requests. If it's > 3 s, set `RERANK_TOP_N = 10`, re-run `eval-retrieval --split test --label rerank10 --record`, ratchet nothing (thresholds must still pass), and redeploy.
 - Beat 4 of the demo is shown in the GIF. A read-only Phoenix login goes in the README **only if** the pinned Phoenix version supports a viewer role; otherwise GIF only (D39).
 - The README notes cold starts: free Spaces sleep after idle, and the first request can take ~1–2 min.
@@ -23,7 +23,7 @@ A public URL serves the app on a free HF Space, sending traces to a second Space
    - Create a free Neon project (region close to HF's US/EU infrastructure) and copy its Postgres connection string.
    - Generate a random 32+ character `PHOENIX_SECRET`.
    - Put both in `.env` as `NEON_DATABASE_URL` and `PHOENIX_SECRET`.
-   - Check the OpenAI project budget is still $15.
+   - Check the OpenAI project budget is $5/month and note the remaining credit (D66); from now on, live traffic spends it.
    - Values stay in `.env`; Claude reads them only inside scripts and never prints them.
 1. **`deploy/phoenix/`:**
    - `Dockerfile` (`FROM arizephoenix/phoenix:<tag>`, plus `ENV` for port/host so it listens on `0.0.0.0:6006`);
@@ -69,6 +69,6 @@ Paid hardware, custom domains, autoscaling. If the free Space can't fit the mode
 ## Handoff checklist
 
 - [ ] Acceptance criteria pass.
-- [ ] HANDOFF: both Space URLs, the Phoenix image tag, live p50/p95 latency and rerank p95, whether the D25 fallback triggered, the viewer-role result, the cold-start time observed.
+- [ ] HANDOFF: both Space URLs, the Phoenix image tag, live p50/p95 latency and rerank p95, whether the D25 fallback triggered, the viewer-role result, the cold-start time observed, live cost/query, OpenAI spend and remaining credit.
 - [ ] Committed on `phase-16-deploy`, pushed, PR open.
 - [ ] Told the owner: merge when green, `/clear`, next is phase 17 (needs ~1 h of your time for the GIF).

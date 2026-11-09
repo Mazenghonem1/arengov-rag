@@ -4,7 +4,7 @@ A bilingual Arabic–English RAG assistant over public UAE government-services p
 
 ## Stack
 
-Python 3.12, `uv`, `pytest`, `ruff`. httpx + BeautifulSoup/lxml (crawl/clean), hand-written BM25 + `snowballstemmer`, `BAAI/bge-m3` dense embeddings + `BAAI/bge-reranker-v2-m3` via `sentence-transformers`, NumPy brute-force search, `openai` SDK (OpenAI `gpt-5.6-luna` generator, `gpt-5.6-terra` judge; local `qwen3:8b` through Ollama's OpenAI-compatible endpoint), FastAPI + one static `ui/index.html`, Arize Phoenix tracing, Docker Compose, GitHub Actions, Hugging Face Spaces.
+Python 3.12, `uv`, `pytest`, `ruff`. httpx + BeautifulSoup/lxml (crawl/clean), hand-written BM25 + `snowballstemmer`, `BAAI/bge-m3` dense embeddings + `BAAI/bge-reranker-v2-m3` via `sentence-transformers`, NumPy brute-force search, `openai` SDK (OpenAI `gpt-5.6-luna` as generator and as dev/CI judge, `gpt-5.6-terra` only for judge validation and final README rows; local `qwen3:8b` through Ollama's OpenAI-compatible endpoint), FastAPI + one static `ui/index.html`, Arize Phoenix tracing, Docker Compose, GitHub Actions, Hugging Face Spaces.
 
 ## Where things are
 
@@ -37,6 +37,7 @@ uv run python -m arengov --help          # the one CLI (crawl, build-index, sear
 - **Crawled content stays out of git.** `data/` is gitignored. Test fixtures are synthetic HTML with invented text. The UI shows answers + ≤300-char snippets + source links only.
 - **No personal data.** Queries are scrubbed before tracing; IPs are never logged.
 - **Disclaimer everywhere it's user-facing:** not official advice, info may be outdated, always check the linked source page.
+- **OpenAI credit is $5 in total.** Debug and test ad hoc with `LLM_BACKEND=ollama` (free, local GPU). Spend OpenAI only on recorded eval runs, the checks a phase file names, and the deployed demo. Eval commands default to `--backend openai` and `--judge-model gpt-5.6-luna`; use `gpt-5.6-terra` only where phases 11 and 17 say so. Record each phase's OpenAI spend in HANDOFF.
 - **The index is versioned.** CI never crawls or rebuilds the index. Changing cleaning/chunking/embedding means rebuilding locally, uploading a new index version, and bumping `eval/index_version.txt` in the same commit.
 
 ## Working rules (one phase per session)
@@ -46,3 +47,4 @@ uv run python -m arengov --help          # the one CLI (crawl, build-index, sear
 3. **End:** run tests and the evals the phase names; update `docs/HANDOFF.md` (done, deviations, metrics, open issues, notes for next phase); commit, push, open the PR; then stop and tell the owner to merge once CI is green and `/clear` before the next phase.
 4. Start the next phase only when the owner asks for it in a new session.
 5. Tasks marked **[YOU]** are the owner's. Explain exactly what to do, then wait.
+6. From phase 15 on: when a phase changes generation-related files (`generate.py`, `llm.py`, `rewrite.py`, `pipeline.py`, `retrieve.py`, `rerank.py`, `judge.py`, `eval_answers.py`, `config.py`, `eval/*`), trigger the answer gate manually with `gh workflow run eval-answers.yml --ref <branch>` and report its result in the PR.

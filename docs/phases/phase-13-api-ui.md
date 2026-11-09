@@ -13,8 +13,10 @@
   - `QUESTION_MAX_CHARS = 500`;
   - the pipeline uses ≤ 3 previous user turns (already in `pipeline`);
   - per-IP `RATE_LIMIT_PER_HOUR = 20` for `/api/ask` (separate 60/hour for feedback);
-  - global `DAILY_CAP = 500` asks per UTC day → HTTP 503 `{"error": "demo_quota"}`;
+  - global `DAILY_CAP = 100` asks per UTC day → HTTP 503 `{"error": "demo_quota"}` (D66);
   - in-memory only.
+- **Credit exhaustion (D66):** the owner has $5 of OpenAI credit in total. When an OpenAI call fails with exhausted quota (`openai.RateLimitError` whose error code is `insufficient_quota`), `/api/ask` returns the same 503 `{"error": "demo_quota"}`, so the UI shows "demo paused" instead of an error. Other OpenAI errors stay 500 `internal`.
+- Manual UI checks run on Ollama (`LLM_BACKEND=ollama` in `.env`, free) except the final example check in task 5, which uses OpenAI because the demo runs on it (D67).
 - IPs are never logged or traced. The limiter keys on `sha256(salt + ip)` with a random salt made at process start (D43). Client IP = the first value of `X-Forwarded-For` when present (HF Spaces sits behind a proxy), else `request.client.host`.
 - Feedback (D41): `{span_id, score: 0|1, comment?}` → Phoenix span annotation `user_feedback`, annotator kind `HUMAN`, label `"up"`/`"down"`, score 1/0, explanation = `scrub(comment)`. When tracing is off it's a no-op returning 204.
 - UI (D45): one static `ui/index.html` with inline vanilla JS and CSS, no build step, no framework, no external scripts. It has:
@@ -40,7 +42,7 @@
      - `AskIn {messages: list[Msg] (1..20), answer_lang: Literal["auto","ar","en"] = "auto"}`, with a validator that the last message is `user` and ≤ `QUESTION_MAX_CHARS`;
      - `FeedbackIn {span_id: str matching ^[0-9a-f]{16}$, score: Literal[0,1], comment: str|None (≤500)}`.
    - Startup (lifespan): `init_tracing("arengov")`; `load_index()`; warm-up = one `embed_query("warm up")` and one `rerank` of one pair, so the first visitor doesn't wait for model loading.
-   - `POST /api/ask` (a sync `def`, so FastAPI runs it in its threadpool): rate-limit check → daily-cap check → `pipeline.answer([m.model_dump() for m in messages], answer_lang)` → return `{answer, citations, refused, refusal_reason, lang, span_id, snapshot_id, latency_ms}` (never `_chunks`). On a pipeline exception, log it and return 500 `{"error": "internal"}` without details.
+   - `POST /api/ask` (a sync `def`, so FastAPI runs it in its threadpool): rate-limit check → daily-cap check → `pipeline.answer([m.model_dump() for m in messages], answer_lang)` → return `{answer, citations, refused, refusal_reason, lang, span_id, snapshot_id, latency_ms}` (never `_chunks`). On `openai.RateLimitError` with code `insufficient_quota`, return 503 `{"error": "demo_quota"}`. On any other pipeline exception, log it and return 500 `{"error": "internal"}` without details.
    - `POST /api/feedback`: its own limiter → annotation via the Phoenix client (look up the exact method for span annotations in the installed `arize-phoenix-client`) → 204.
    - `GET /api/health` → `{status: "ok", index_version, snapshot_id}`.
    - 429 body `{"error": "rate_limited"}`; the UI shows a bilingual message for it and for `demo_quota`.
@@ -62,9 +64,10 @@
    - 422 for a 501-char question and for a last message with role `assistant`;
    - the 3rd request with the limit monkeypatched to 2 → 429;
    - the daily cap → 503 `demo_quota`;
+   - a faked `insufficient_quota` error from `pipeline.answer` → 503 `demo_quota`; any other exception → 500 `internal`;
    - feedback with a bad `span_id` → 422; a valid one → 204, with the annotation call receiving the scrubbed comment;
    - `/` serves HTML that contains the disclaimer string.
-5. **Manual check** with Phoenix up: run uvicorn, open http://localhost:8000.
+5. **Manual check** with Phoenix up: run uvicorn, open http://localhost:8000. Do the layout, RTL, history and feedback checks on Ollama. Then restart with `LLM_BACKEND=openai` for one pass over the 4 examples only (~$0.005).
    - Click every example (the AR answer cites an EN page; the follow-up resolves; off-topic is refused).
    - Thumbs-down one answer with a comment → the annotation is visible on the trace in Phoenix.
    - Reload → history restored; New chat → cleared.

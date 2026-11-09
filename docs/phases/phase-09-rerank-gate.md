@@ -1,6 +1,6 @@
 # Phase 09: Reranker, pair collapse, and the refusal gate
 
-**Size:** ~3.5 h · **Depends on:** phase 08 merged · **Cost:** ~$0.80
+**Size:** ~3.5 h · **Depends on:** phase 08 merged · **Cost:** ~$0.05 (one luna-judged test answer eval; D64)
 
 ## Goal
 
@@ -42,9 +42,8 @@ A cross-encoder reranks the top-20 hybrid candidates, translations of the same p
    - `eval-retrieval --split test --label hybrid-rerank`
    - `eval-retrieval --split test --cross-lingual --label hybrid-rerank-xling`
    - `eval-retrieval --split dev --label hybrid-rerank`
-   - `eval-answers --split dev --label rerank-gate`
-   - `eval-answers --split test --label rerank-gate`
-   (The no-rerank ablation is the phase 08 `hybrid` row.)
+   - `eval-answers --split test --label rerank-gate` (test only, D64; default `--backend openai`, luna judge)
+   (The no-rerank ablation is the phase 08 `hybrid` row. Any manual checks of the gate with `ask` use `LLM_BACKEND=ollama`; the gate itself makes no LLM call.)
 10. **Ratchet thresholds** with the new test summaries; `check-thresholds` passes. If `refusal_correct` went up but a retrieval metric dropped, report it honestly in HANDOFF.
 
 ## Files
@@ -55,7 +54,7 @@ Create: `src/arengov/rerank.py`, `tests/test_rerank.py`. Change: `retrieve.py`, 
 
 - `uv run pytest` (including slow) passes; ruff clean.
 - `GATE_TAU` is set from `pick-tau` (or `None`, with the reason in HANDOFF).
-- 5 new rows in `docs/results.md`; `check-thresholds` passes.
+- 4 new rows in `docs/results.md`; `check-thresholds` passes.
 
 ## Out of scope
 

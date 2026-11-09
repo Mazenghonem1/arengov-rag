@@ -51,7 +51,7 @@ Every `ask` produces one Phoenix trace with a span per pipeline stage (rewrite, 
 7. **Tests:**
    - `tests/test_scrub.py`: each pattern (an EN sentence with an email; `784-1990-1234567-1` and `784199012345671`; `+971 50 123 4567`; passport `N1234567`; a 9-digit number; an Arabic sentence with an Arabic-Indic Emirates ID `٧٨٤١٩٩٠١٢٣٤٥٦٧١`, redacted while the Arabic words stay intact); fees like `AED 1,000` and `30 days` untouched.
    - `tests/test_tracing.py`: with no endpoint, `pipeline.answer` (faked stages) returns `span_id is None` and works. With an in-memory span exporter (`opentelemetry.sdk.trace.export.in_memory_span_exporter`) installed on a test tracer provider: the span names and parent-child structure match the tree above, the root attributes are present, and the question attribute is scrubbed.
-8. **Manual check:** `docker compose up -d phoenix`; set `PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006` in `.env`; `ask` 3 questions (EN, AR, one with a fake Emirates ID in it); run `eval-retrieval --split dev --label trace-check` (no `--record`). Open http://localhost:6006 and confirm: project `arengov` has 3 traces with all spans; the retriever spans show documents; the LLM span shows tokens; the ID appears as `[REDACTED]` everywhere, including the LLM span's input; project `eval` holds the eval traces. Show the owner one trace.
+8. **Manual check:** `docker compose up -d phoenix`; set `PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006` in `.env`; `ask` 3 questions on Ollama (`LLM_BACKEND=ollama`, free; the OpenAI instrumentor also traces Ollama calls, since they go through the `openai` SDK): EN, AR, and one with a fake Emirates ID in it; run `eval-retrieval --split dev --label trace-check` (no `--record`). Open http://localhost:6006 and confirm: project `arengov` has 3 traces with all spans; the retriever spans show documents; the LLM span shows tokens; the ID appears as `[REDACTED]` everywhere, including the LLM span's input; project `eval` holds the eval traces. Show the owner one trace.
 
 ## Files
 
@@ -61,7 +61,7 @@ Create: `docker-compose.yml`, `src/arengov/scrub.py`, `src/arengov/tracing.py`, 
 
 - `uv run pytest -m "not slow"` passes **without Phoenix running**; ruff clean.
 - The manual check passes (owner has seen a trace); the PII test question shows `[REDACTED]` in every span.
-- `eval-retrieval --split test` with tracing on gives the same metrics as phase 10's `rewrite` row (tracing doesn't change behavior).
+- `eval-retrieval --split test` with tracing on gives the same metrics as phase 10's `rewrite` row (tracing doesn't change behavior). This is the only OpenAI use in this phase (~$0.002).
 
 ## Out of scope
 

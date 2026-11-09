@@ -1,6 +1,6 @@
 # Phase 10: Multi-turn follow-ups via query rewriting, and demo examples
 
-**Size:** ~2.5 h · **Depends on:** phase 09 merged · **Cost:** ~$0.80
+**Size:** ~2.5 h · **Depends on:** phase 09 merged · **Cost:** ~$0.20 (luna-judged dev + test answer evals, rewrites, demo checks)
 
 ## Goal
 
@@ -12,7 +12,8 @@ Follow-up questions ("and for my wife?", "وماذا عن تجديدها؟") are
 - **Rewriter input** (D58): the previous ≤ `HISTORY_MAX_TURNS = 3` **user** messages + the new one; assistant messages are ignored. It runs only when there is at least one previous user message. Output in the follow-up's language.
 - After rewriting, everything is single-turn: retrieval and generation use the rewritten query (D58).
 - Answer language is detected from the **original** last message, not the rewritten one.
-- Retrieval eval rewrites multi-turn questions via the LLM (~$0.002 per run), so `eval-retrieval` now needs `OPENAI_API_KEY` (D58).
+- Retrieval eval rewrites multi-turn questions via the LLM (~$0.002 per run), so `eval-retrieval` now needs `OPENAI_API_KEY` (D58). `eval-retrieval` and `pick-tau` get a `--backend openai|ollama` flag **defaulting to `openai`**, set for the whole run, so a local `LLM_BACKEND=ollama` never leaks into recorded metrics (D67).
+- Debug the rewriter ad hoc on Ollama (`LLM_BACKEND=ollama`, free). OpenAI is used for the recorded runs in task 7 and the demo checks in task 9, because the demo runs on OpenAI.
 - Demo beats (D2, D31c): an English question; an Arabic question whose cited source is really English; an Arabic follow-up to it; an off-topic question that gets refused.
 
 ## Tasks
@@ -34,7 +35,7 @@ Follow-up questions ("and for my wife?", "وماذا عن تجديدها؟") are
    - Detect `lang` from `question`.
    - `rewritten = rewrite(prev, question, lang)[0] if prev else question`.
    - Retrieve and generate with `rewritten`; return it as `rewritten_query`; add the rewrite tokens and cost to `usage`.
-4. **`eval_retrieval.run`:** for `multi_turn` questions the query is `rewrite(turns[:-1][-3:], turns[-1], q["lang"])[0]`; store it in details. `eval_answers` needs no change (it already sends all turns).
+4. **`eval_retrieval.run`:** add the `backend="openai"` parameter (and the `--backend` CLI flag) and set `config.LLM_BACKEND` for the run. For `multi_turn` questions the query is `rewrite(turns[:-1][-3:], turns[-1], q["lang"])[0]`; store it in details. Give `pick-tau` the same `--backend` flag. `eval_answers` needs no change (it already sends all turns and defaults to `openai`).
 5. **Re-pick τ:** extend `pick_tau` to include `multi_turn` questions (with rewriting), run it on dev, apply the safety rule, and update `GATE_TAU`.
 6. **Tests** (`tests/test_rewrite.py`, additions to `tests/test_pipeline.py`):
    - the prompt includes only user messages, at most 3 previous ones;
@@ -44,14 +45,14 @@ Follow-up questions ("and for my wife?", "وماذا عن تجديدها؟") are
 7. **Eval runs** (`--record`):
    - `eval-retrieval --split test --label rewrite`
    - `eval-retrieval --split dev --label rewrite`
-   - `eval-answers --split dev --label rewrite`
-   - `eval-answers --split test --label rewrite`
+   - `eval-answers --split dev --label rewrite` (luna judge)
+   - `eval-answers --split test --label rewrite` (luna judge; phase 17 re-judges these stored test answers with terra for the README, so keep `eval/results/details/` on disk)
    Compare the `multi_turn` row of `by_type` with phase 09 and put both numbers in HANDOFF.
 8. **Ratchet thresholds**; `check-thresholds` passes.
 9. **Choose the demo examples.** From the latest dev+test answer details, list candidates:
    - (a) an EN `single` with all judge checks passing;
-   - (b) an AR question, answered and judge-passing, whose citations include an `en` page. If there's none, search for AR questions about pages whose AR mirror is missing (`pair_url` null) and test 3–5 with `ask`;
-   - (c) a 2-turn AR conversation starting from (b)'s question whose follow-up works with `ask`-style multi-message input. Test it via a small Python call to `pipeline.answer` with two user messages;
+   - (b) an AR question, answered and judge-passing, whose citations include an `en` page. If there's none, search for AR questions about pages whose AR mirror is missing (`pair_url` null) and test 3–5 with `ask --backend openai`;
+   - (c) a 2-turn AR conversation starting from (b)'s question whose follow-up works with `ask`-style multi-message input. Test it via a small Python call to `pipeline.answer` with two user messages and `config.LLM_BACKEND = "openai"`;
    - (d) an `unanswerable_oos` question that gets refused.
    Show 2 candidates per slot to the owner and **let the owner pick**. Write `ui/examples.json`:
    ```json

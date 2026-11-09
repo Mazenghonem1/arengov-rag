@@ -42,7 +42,7 @@
    - Open http://localhost:7860 and ask 5 questions (examples + 1 typed), giving 2 thumbs-down with comments and 1 thumbs-up.
    - Run `uv run python scripts/ops_report.py --days 1` → `docs/ops-report.md` shows n=5 (plus earlier local traffic), a feedback rate and % negative.
    - Run `uv run python scripts/export_bad_feedback.py --days 1` → 2 lines in `eval/candidates.jsonl`.
-   - With `LLM_BACKEND=ollama` in `.env`, recreate `app` and ask 1 question. It proves the container reaches host Ollama. If it's refused, the owner sets the Windows env var `OLLAMA_HOST=0.0.0.0` and restarts Ollama; note it in HANDOFF. Set `LLM_BACKEND` back to `openai` afterwards.
+   - The 5 questions run on Ollama (`LLM_BACKEND=ollama` from `.env`, free, D67), which also proves the container reaches host Ollama. If it's refused, the owner sets the Windows env var `OLLAMA_HOST=0.0.0.0` and restarts Ollama; note it in HANDOFF. Mean cost/query in this local report is $0 (Ollama); live cost numbers come from phase 16. This phase spends no OpenAI credit.
 
 ## Files
 

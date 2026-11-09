@@ -40,8 +40,8 @@ An empty but real project: `uv` package with a working CLI skeleton, tests, lint
 6. **`src/arengov/config.py`:** `from dotenv import load_dotenv; load_dotenv()`, then path constants: `ROOT = Path(__file__).resolve().parents[2]`, `DATA_DIR = ROOT / "data"`, `SNAPSHOT_ROOT = DATA_DIR / "snapshots"`, `INDEX_ROOT = DATA_DIR / "index"`, `EVAL_DIR = ROOT / "eval"`, `INDEX_VERSION_FILE = EVAL_DIR / "index_version.txt"`.
 7. **`src/arengov/__main__.py`:** `main(argv=None)` builds an `argparse.ArgumentParser(prog="arengov")` with `add_subparsers(dest="cmd", required=True)`. Each later phase adds `sub.add_parser(...)` with `set_defaults(func=…)`, and `main` calls `args.func(args)`. Ship it with no subcommands yet. `--help` must work. End with `if __name__ == "__main__": main()`.
 8. **`tests/test_cli.py`:** `main(["--help"])` raises `SystemExit` with code 0.
-9. **`.gitignore`:** `.venv/`, `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `.env`, `data/`, `eval/results/details/`, `eval/grading/`, `eval/candidates.jsonl`, `*.egg-info/`.
-10. **`.env.example`:** `OPENAI_API_KEY=`, `LLM_BACKEND=openai`, `HF_TOKEN=`, `PHOENIX_COLLECTOR_ENDPOINT=`, `PHOENIX_API_KEY=`, each with a one-line comment.
+9. **`.gitignore`** (extend the existing file, which so far only ignores `.env`): `.venv/`, `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `.env`, `data/`, `eval/results/details/`, `eval/grading/`, `eval/candidates.jsonl`, `*.egg-info/`.
+10. **`.env.example`:** `OPENAI_API_KEY=`, `LLM_BACKEND=ollama` (comment: "local default: free debugging on Ollama; eval commands force openai; the deployed Space leaves it unset = openai", D67), `HF_TOKEN=`, `PHOENIX_COLLECTOR_ENDPOINT=`, `PHOENIX_API_KEY=`, each with a one-line comment.
 11. **`LICENSE`:** MIT, "Copyright (c) 2026 Mazen Ghonem".
 12. **`README.md` stub:** title, the one-line pitch from `docs/PRD.md`, "Status: work in progress", the bilingual disclaimer (text below), and a "Data & legal" paragraph: content belongs to TDRA / u.ae, is not included in this repo and not covered by the MIT license; for removal requests open a GitHub issue.
 13. **`docs/legal/tdra-request.md`:** a short email in English then Arabic (~120 words each). Contents: who the owner is (an individual building a non-commercial learning project), what the project does, that it shows only short snippets with links to u.ae and never republishes full pages, that the code is public and the content is not, that it shows a disclaimer, that the owner will remove the demo on request; it asks whether this use is acceptable. Leave `[contact address]` as a placeholder, plus a note telling the owner to find the address on u.ae's "Contact us" page.
@@ -70,7 +70,7 @@ Only `httpx` and `python-dotenv` are added now; each library arrives with the ph
 ## [YOU] tasks (any time this week)
 
 1. Send the TDRA email from `docs/legal/tdra-request.md` (fill in the contact address). Note the date in HANDOFF.
-2. Create `.env` from `.env.example` and fill in `OPENAI_API_KEY`. In the OpenAI dashboard, set a **monthly budget of $15** on the project that key belongs to (D30).
+2. Create `.env` from `.env.example` and fill in `OPENAI_API_KEY`. In the OpenAI dashboard, set a **monthly budget of $5** on the project that key belongs to (D66). Your total credit is $5, so treat every OpenAI call as spending it; ad-hoc testing runs on Ollama.
 3. Confirm your Hugging Face username (create an account if needed). If it isn't `Mazenghonem1`, tell the next session; names in D53 depend on it.
 4. Install Docker Desktop (WSL2 backend) before phase 12.
 

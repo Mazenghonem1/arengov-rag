@@ -1,6 +1,6 @@
 # Phase 07: Answer evaluation, LLM judge, baseline and thresholds
 
-**Size:** ~4 h · **Depends on:** phase 06 merged · **Cost:** ~$1 of OpenAI
+**Size:** ~4 h · **Depends on:** phase 06 merged · **Cost:** ~$0.15 of OpenAI (budget: $5 total, D66)
 
 ## Goal
 
@@ -12,7 +12,7 @@
   - `refusal_correct` = `refused == (not answerable)`, over all questions.
   - `lang_match` = `detect_lang(answer without [n] markers and URLs) == question.lang`, over all questions, refusals included.
   - `citation_valid` = ≥1 citation and no invalid markers, over answered (non-refused) questions.
-- **Judge** (D28, D36): `gpt-5.6-terra` (`role="judge"`), one call per answer, structured JSON with a reason and a pass/fail for `faithfulness`, `correctness`, `citation_accuracy`. It runs only on **answerable questions that were answered**.
+- **Judge** (D28, D36, D63): `config.JUDGE_MODEL` (default `gpt-5.6-luna`, `role="judge"`), overridable per run with `--judge-model`. All development runs and CI use luna; `gpt-5.6-terra` is used only in phases 11 and 17. One call per answer, structured JSON with a reason and a pass/fail for `faithfulness`, `correctness`, `citation_accuracy`. It runs only on **answerable questions that were answered**.
 - Multi-turn: until phase 10, `pipeline.answer` sees all user turns but uses only the last (D58). The eval passes the turns as user messages.
 - Language: the eval calls `answer(messages, answer_lang="auto")` so detection is tested too.
 - Ops metrics per run: `latency_p50_ms`, `latency_p95_ms`, `cost_per_q_usd` (generation cost only; judge cost reported separately as `eval_cost_usd`).
@@ -52,25 +52,25 @@
      It calls `complete(JUDGE_SYSTEM, [msg], JUDGE_MAX_TOKENS, role="judge", json_schema=JUDGE_SCHEMA)`, and returns the parsed dict plus `"cost_usd"`.
 3. **`pipeline.answer`:** also return the final chunk dicts under the key `"_chunks"` (the leading underscore marks it internal; the API strips it in phase 13). The judge needs exactly what the generator saw. (`_chunks` is already listed in PLAN.md § `pipeline.answer` returns.)
 4. **`src/arengov/eval_answers.py`:**
-   - `run(split, *, backend=None, label, record=False)`: set `config.LLM_BACKEND` if `backend` is given. For each question in the split (all types):
+   - `run(split, *, backend="openai", judge_model=None, label, record=False)`: set `config.LLM_BACKEND = backend` for the whole run (the default is `openai` even when the local `.env` says `ollama`, D67), and set `config.JUDGE_MODEL = judge_model` when it's given. For each question in the split (all types):
      - `out = pipeline.answer([{"role": "user", "content": t} for t in q["turns"]], "auto")`;
      - deterministic checks;
      - the judge when answerable and not refused.
    - Keep going on errors: log them, count them in the summary as `errors`, and treat that question as failing every check.
-   - Summary `{kind: "answers", label, split, index_version, git_sha, timestamp, backend, gen_model, n, n_judged, errors, metrics: {...}, by_lang, by_type, eval_cost_usd}`. Write it plus per-question details (answer, citations, refused, checks, judge reasons, latency, cost) as in phase 06. `--record` appends a row to `docs/results.md` (answer columns filled, retrieval columns `—`). `--out PATH` copies the summary.
+   - Summary `{kind: "answers", label, split, index_version, git_sha, timestamp, backend, gen_model, judge_model, n, n_judged, errors, metrics: {...}, by_lang, by_type, eval_cost_usd}`. Write it plus per-question details (answer, citations, refused, checks, judge reasons, latency, cost) as in phase 06. `--record` appends a row to `docs/results.md` (answer columns filled including `backend` and `judge`, retrieval columns `—`). `--out PATH` copies the summary.
    - Print the summary table and the ids of failed checks per metric.
-   - `rejudge(details_path)` re-runs only the judge on stored outputs (used in phase 11). It needs the stored chunk texts: the details lines keep `final_chunk_ids`, and `rejudge` re-reads the texts from the index of the same `index_version`.
+   - `rejudge(details_path, judge_model=None, label=None, record=False)` re-runs only the judge on stored outputs (used in phases 11 and 17 with `gpt-5.6-terra`). It needs the stored chunk texts: the details lines keep `final_chunk_ids`, and `rejudge` re-reads the texts from the index of the same `index_version`. It writes a new summary + details (label defaults to `<original label>-rejudge-<judge model>`) that keep the original generation metrics (latency, cost, deterministic checks) and replace only the judge metrics and `judge_model`.
 5. **Thresholds:**
    - `set-thresholds RETRIEVAL_SUMMARY ANSWERS_SUMMARY`: both must be test-split summaries. Compute per the rule above, ratchet against the existing `eval/thresholds.json` (`{"split": "test", "retrieval": {...}, "answers": {...}}`), write it, and print old → new.
    - `check-thresholds SUMMARY [SUMMARY…]`: compare each gated metric present in the summaries; print a pass/fail table; exit 1 if any value is below its threshold.
-6. **CLI:** `eval-answers --split dev|test|all --label NAME [--backend openai|ollama] [--record] [--out PATH] [--rejudge DETAILS]`, `set-thresholds`, `check-thresholds`.
+6. **CLI:** `eval-answers --split dev|test|all --label NAME [--backend openai|ollama (default openai)] [--judge-model MODEL (default config.JUDGE_MODEL)] [--record] [--out PATH] [--rejudge DETAILS]`, `set-thresholds`, `check-thresholds`.
 7. **Tests** (`tests/test_eval_answers.py`, `tests/test_judge.py`, `tests/test_thresholds.py`):
    - deterministic checks on fake outputs (refused/answerable combos, `lang_match` with `[n]` and URLs in the text, invalid citations);
    - the judge message format and parsing with `complete` faked to return schema-valid JSON;
    - the threshold rule: 0.734 → 0.65, 0.70 → 0.65, 1.0 → 0.95, 0.04 → 0.0;
    - the ratchet keeps a higher old value;
    - `check-thresholds` exits 1 on one failure and 0 when all pass.
-8. **Baseline runs** (with `--record`): `eval-answers --split dev --label bm25-baseline`, then `--split test --label bm25-baseline` (~$0.7 total). Then `set-thresholds <phase-06 bm25-baseline test retrieval summary> <today's test answers summary>`, and `check-thresholds` on both (must pass).
+8. **Baseline runs** (with `--record`, luna judge): `eval-answers --split dev --label bm25-baseline`, then `--split test --label bm25-baseline` (~$0.12 total). Then `set-thresholds <phase-06 bm25-baseline test retrieval summary> <today's test answers summary>`, and `check-thresholds` on both (must pass).
 9. **Read the failures:** for dev, list each judge-failed or refusal-failed question with the judge's reason and a one-line cause guess (retrieval miss, hallucination, language drift, over-refusal). Put the top 5 in HANDOFF.
 
 ## Files
@@ -81,7 +81,8 @@ Create: `src/arengov/judge.py`, `src/arengov/eval_answers.py`, `tests/test_eval_
 
 - `uv run pytest -m "not slow"` passes; ruff clean.
 - Two answer rows in `docs/results.md`; `eval/thresholds.json` committed; `check-thresholds` passes on the test summaries.
-- `eval_cost_usd` of the test run ≤ $0.60 (printed).
+- `eval_cost_usd` of the test run ≤ $0.10 (printed). If it's higher, stop and tell the owner before running anything else (the $5 budget assumes ~$0.04).
+- Tests also cover: `--backend` defaults to `openai` even with `LLM_BACKEND=ollama` in the environment; `--judge-model` reaches `llm.complete`; the summary records `judge_model`.
 
 ## Out of scope
 
@@ -96,11 +97,11 @@ The judge is used as-is here; validating it against the owner's grades is phase 
   - bad citation = the right facts attributed to the wrong source.
 - **Reason-then-verdict** and **strict JSON schemas:** why both make an LLM judge more reliable and parseable.
 - **Regression thresholds as a ratchet:** a gate stops quality from silently dropping; the 5-point margin absorbs noise from a 20-question test set.
-- **Cost of evaluation:** what a full run costs and why CI runs the answer eval only when generation code changes.
+- **Cost of evaluation:** what a full run costs, why development uses the cheap luna judge (good enough to spot regressions) while headline numbers get the validated terra judge, and why CI runs the answer eval only on manual dispatch.
 
 ## Handoff checklist
 
 - [ ] Acceptance criteria pass.
-- [ ] HANDOFF: the answer baseline rows, the thresholds, the top-5 failure analysis, the eval cost.
+- [ ] HANDOFF: the answer baseline rows, the thresholds, the top-5 failure analysis, the eval cost and cumulative OpenAI spend.
 - [ ] Committed on `phase-07-answer-eval`, pushed, PR open.
 - [ ] Told the owner: merge when green, `/clear`, next is phase 08.

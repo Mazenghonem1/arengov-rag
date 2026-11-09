@@ -1,6 +1,6 @@
 # Phase 17: Launch: comparison row, README, diagram, GIF
 
-**Size:** ~4 h (3 h Claude, 1 h [YOU] GIF) · **Depends on:** phase 16 merged · **Cost:** ~$0.20
+**Size:** ~4 h (3 h Claude, 1 h [YOU] GIF) · **Depends on:** phase 16 merged · **Cost:** ~$0.45 (terra judging of the README rows, D63)
 
 ## Goal
 
@@ -23,7 +23,7 @@ The repo tells the whole story in under 5 minutes. A recruiter sees the GIF, the
   - BM25, dense, hybrid, + rerank (the final pipeline);
   - cross-lingual recall@5 for BM25 / dense / hybrid+rerank;
   - normalization off;
-  - answers for `gpt-5.6-luna` vs local `qwen3:8b`;
+  - answers for `gpt-5.6-luna` vs local `qwen3:8b`, **both judged by `gpt-5.6-terra`**, the judge validated in phase 11 (D63). Development rows in `docs/results.md` used the luna judge; the README shows only terra-judged answer rows and says so;
   - judge agreement + κ per criterion;
   - live ops numbers (p95 latency, cost/query) from `docs/ops-report.md`.
   State "n = 20 test questions; 1 question ≈ 5 points".
@@ -32,17 +32,20 @@ The repo tells the whole story in under 5 minutes. A recruiter sees the GIF, the
 
 ## Tasks
 
-1. **Qwen row:** with Ollama running, `uv run python -m arengov eval-answers --split test --backend ollama --label qwen3-8b --record` (the judge is still OpenAI). Note latency differences honestly (local GPU vs API).
+1. **Terra-judged answer rows** (D63; the only OpenAI spend in this phase):
+   - **Luna row:** take the stored test details of the latest luna answer run that matches the deployed pipeline: phase 10's `rewrite` test run. Exception: if phase 16 changed the pipeline (e.g. the D25 rerank fallback), first re-run `eval-answers --split test --label final --record` (~$0.04) and use that. Then `eval-answers --rejudge <details> --judge-model gpt-5.6-terra --label luna-final-terra --record` (~$0.20). If phase 11 already re-judged exactly these details with the final judge prompt, reuse that summary and skip the call.
+   - **Qwen row:** with Ollama running, `eval-answers --split test --backend ollama --judge-model gpt-5.6-terra --label qwen3-8b-terra --record` (generation is free; terra judging ~$0.20). Note latency differences honestly (local GPU vs API).
+   - Confirm both summaries show `judge_model: gpt-5.6-terra` before copying numbers into the README.
 2. **`README.md`**, full rewrite in the D49 order:
    - **Pitch** (2 sentences) + badges (CI, license) + **live demo link** + `![demo](docs/demo.gif)`.
    - **Disclaimer** EN + AR (text from `phase-00-setup.md`).
-   - **Results:** one compact table of the rows above, built from `docs/results.md` (copy the numbers; link to the full log). One sentence each on what hybrid, the reranker and cross-lingual mode show. Link the gate-demo PR ("CI blocks regressions: example").
+   - **Results:** one compact table of the rows above, built from `docs/results.md` (copy the numbers; link to the full log). One sentence each on what hybrid, the reranker and cross-lingual mode show. One line on judging: "Answer metrics judged by gpt-5.6-terra, validated against blind human grades (agreement X%, κ Y); development runs used gpt-5.6-luna as a cheaper regression judge." Link the gate-demo PR ("CI blocks regressions: example").
    - **Architecture:** a Mermaid `flowchart LR`: Crawler → Snapshot → Clean/Chunk → {BM25 index, bge-m3 embeddings} → Retrieval (BM25 + dense → RRF → reranker → pair collapse → gate) → LLM (gpt-5.6-luna / qwen3:8b) → Answer + citations → UI. Phoenix receives traces; feedback flows back into Phoenix and then the eval set; CI runs the eval against thresholds. Keep it ≤ 20 nodes.
    - **How it works:** one short paragraph per stage (crawl, clean+chunk, Arabic-aware BM25, dense, RRF, rerank+collapse, refusal gate, generation with citations, query rewriting, evaluation, judge validation, tracing+feedback, CI gates, deployment). Each paragraph names the file in `src/arengov/`.
    - **Why no vector DB:** 3 sentences (scale, exact search, when to switch).
    - **Run locally:** `uv sync`, `.env`, `crawl` → `build-index --embed` → `ask`; `docker compose up`; eval commands. Mention that the data is not included and you must crawl it yourself, politely.
    - **Design decisions:** a link to `docs/DECISIONS.md` and `docs/PLAN.md`.
-   - **Limitations:** 3 categories only; one snapshot date; a 20-question test set (noisy); a single-annotator judge validation; free-tier cold starts; no official status; the detection heuristic for mixed-script language; translations may differ from the source page.
+   - **Limitations:** 3 categories only; one snapshot date; the live demo pauses when its small OpenAI credit runs out (the GIF shows it working); a 20-question test set (noisy); a single-annotator judge validation; free-tier cold starts; no official status; the detection heuristic for mixed-script language; translations may differ from the source page.
    - **Legal / takedown:** the content belongs to TDRA; not included; open an issue for removal; the TDRA email status.
 3. **[YOU] Record the GIF** (~1 h with retakes) following the beat list, at a 1280×720 window, then crop and optimize in ScreenToGif to ≤ 10 MB. Save it as `docs/demo.gif`. Claude checks the size and that it renders in the README preview.
 4. **Final ops report:** regenerate `docs/ops-report.md` from the hosted Phoenix (`--days 30`).
@@ -58,7 +61,7 @@ Create: `docs/demo.gif` ([YOU]). Change: `README.md`, `docs/results.md`, `docs/o
 
 - The README renders on GitHub with the GIF, the Mermaid diagram and the results table; every number in it matches `docs/results.md`.
 - A test reader (the owner, with a timer) gets the story from the README + live demo in < 5 minutes.
-- The `qwen3-8b` row is recorded; `docs/demo.gif` is ≤ 10 MB.
+- The `luna-final-terra` and `qwen3-8b-terra` rows are recorded with `judge_model = gpt-5.6-terra`, and every answer number in the README comes from them; `docs/demo.gif` is ≤ 10 MB.
 - CI is green; the `v1.0` tag and release exist after the merge.
 
 ## Out of scope
