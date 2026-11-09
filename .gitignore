@@ -1,2 +1,14 @@
-# Secrets (phase 00 extends this file)
+# Secrets
 .env
+
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Crawled content and generated artifacts stay out of git
+data/
+eval/results/details/
+eval/grading/
+eval/candidates.jsonl
