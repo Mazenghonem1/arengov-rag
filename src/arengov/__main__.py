@@ -2,6 +2,7 @@ import argparse
 from datetime import date
 
 from arengov import config, crawl
+from arengov.index import build_index
 
 
 def _crawl(args):
@@ -16,6 +17,11 @@ def _diff(args):
             print(f"{kind}\t{url}")
 
 
+def _build_index(args):
+    build_index(args.snapshot, args.version)
+    config.INDEX_VERSION_FILE.write_text(args.version + "\n", encoding="utf-8")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="arengov")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -28,6 +34,11 @@ def main(argv=None):
     p.add_argument("old")
     p.add_argument("new")
     p.set_defaults(func=_diff)
+
+    p = sub.add_parser("build-index", help="clean + chunk a snapshot into data/index/<version>/")
+    p.add_argument("--snapshot", required=True)
+    p.add_argument("--version", required=True)
+    p.set_defaults(func=_build_index)
 
     args = parser.parse_args(argv)
     args.func(args)
