@@ -22,3 +22,8 @@ CRAWL_TIMEOUT_S = 30
 USER_AGENT = (
     "ArEnGovRAG/0.1 (+https://github.com/Mazenghonem1/arengov-rag; non-commercial research)"
 )
+
+# Clean + chunk (phase 02)
+MIN_PAGE_CHARS = 200
+CHUNK_MAX_TOKENS = 400
+TOKENIZER_MODEL = "BAAI/bge-m3"

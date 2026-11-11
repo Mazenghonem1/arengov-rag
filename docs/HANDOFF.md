@@ -4,39 +4,40 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 01-crawl
+**Phase:** 02-clean-chunk
 **Date:** 2026-11-11
-**Status:** done (owner accepted 145 EN / visa 29 as is; no backup category)
+**Status:** done (owner approved one cleaned page per language and 6 random chunks)
 
 **Done**
-- `crawl.py` (`normalize_url`, `category_of`, `mirror_url`, `page_id`, `crawl`, `diff`), CLI `crawl` / `diff`, `[01]` config constants, 7 tests (no network).
-- Real crawl, snapshot `2026-11-11`: 307 requests, 1540 s, no abort, robots.txt = 404 (allow all), min gap between requests 3.16 s.
-
-| category | EN | AR | AR missing |
-|---|---|---|---|
-| visa-and-emirates-id | 29 | 28 | 1 |
-| jobs | 68 | 67 | 1 |
-| business | 48 | 48 | 0 |
-| **total** | **145** | **143** | 2 |
-
-- `diff 2026-11-11 2026-11-11`: 0 new / 0 changed / 0 removed. Sampled raw files (jobs EN, business EN, visa AR) are real content pages.
+- `clean.py` (`clean_html`), `chunk.py` (`count_tokens`, `chunk_page`), `index.py` (`build_index`, `Index`, `load_index`), CLI `build-index`, `[02]` config constants, synthetic EN/AR fixtures, 9 new tests (1 slow).
+- Real build: `data/index/2026-11-11-v1/`; `eval/index_version.txt` = `2026-11-11-v1`.
+- Selectors: `CONTENT_SELECTOR = main#mainContentContainer` (present on all 288 pages). Dropped: script, style, noscript, svg, iframe, ins, form, select, button, `.topic-navigation`, `.artical-info-link`.
 
 **Deviations from plan**
-- `raw_path` is relative to the snapshot dir (`raw/<sha1(url)>.html`).
-- robots.txt is fetched first on every run (one logged request); a status other than 200/404 aborts.
+- u.ae pages have no `h1` (title is in a hero header outside `main`), so the title always comes from `<title>` minus the site suffix.
+- Text outside `h1-h4, p, li, table` is 6.0% of the container's visible text (<10%), so no tags were added. Not captured: `h6` titles and link-card text on landing pages, which are skipped anyway.
 
-**Metrics:** tests: 8 passed, ruff clean. **Acceptance misses:** EN pages 145 (< 150 target) and visa-and-emirates-id 29 (< 30). Visa and business exhausted their in-scope links (BFS queue empty at depth 3), so this is the site's structure, not the cap or depth limit.
+**Metrics:** tests: 16 passed, ruff clean.
+
+| | EN | AR |
+|---|---|---|
+| pages kept | 113 | 110 |
+| pages skipped (<200 chars, link-list landing pages) | 32 | 33 |
+| chunks | 419 | 449 |
+
+Chunks per category: visa-and-emirates-id 119, jobs 464, business 285. Tokens (bge-m3): mean 228.1, max 400.
 
 **OpenAI spend:** $0 / $0
 
 **Open issues**
-- Decided 2026-11-11: accept 145 EN / 29 visa; `moving-to-the-uae` not added.
-- 19 non-200 responses (all 404): robots.txt, 2 missing AR mirrors, 16 dead EN links. 8 of those are `.ashx` document links; `normalize_url` should also skip `.ashx` (not changed, crawl already done).
-- TDRA: the automated reply (2026-11-10) gives no permission. Phases 15 (HF index upload) and 16 (public demo) are gated on a written answer. [YOU] follow-up sent: not yet.
+- `normalize_url` still doesn't skip `.ashx` (not needed here).
+- TDRA: no written permission yet; phases 15-16 stay gated.
+- Link-only sections ("Related digital services") make tiny, weak chunks; revisit only if phase 06 recall shows a problem.
 
 **Notes for next phase**
-- Snapshot id for phase 02: `2026-11-11` (`data/` is gitignored; rerun `crawl` locally on a fresh clone).
-- Manifest order: each EN line is followed by its AR line.
+- Index version in use: `2026-11-11-v1` (local only, `data/` is gitignored; rebuild with `build-index` on a fresh clone).
+- `build-index` downloads the bge-m3 tokenizer from Hugging Face on first run.
+- H4 headings stay as `#### ` lines inside chunk text.
 
 **Commit:** see PR
 
@@ -47,6 +48,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 | planning | 2026-11-09 | done | — |
 | 00 setup | 2026-11-09 | done | CI green |
 | 01 crawl | 2026-11-11 | done | 145 EN / 143 AR pages |
+| 02 clean-chunk | 2026-11-11 | done | 868 chunks (419 EN / 449 AR), max 400 tokens |
 
 ---
 
