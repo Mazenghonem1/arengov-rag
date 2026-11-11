@@ -6,7 +6,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 **Phase:** 01-crawl
 **Date:** 2026-11-11
-**Status:** partial (code + crawl done; acceptance numbers short, waiting on [YOU] decision below)
+**Status:** done (owner accepted 145 EN / visa 29 as is; no backup category)
 
 **Done**
 - `crawl.py` (`normalize_url`, `category_of`, `mirror_url`, `page_id`, `crawl`, `diff`), CLI `crawl` / `diff`, `[01]` config constants, 7 tests (no network).
@@ -30,7 +30,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 **OpenAI spend:** $0 / $0
 
 **Open issues**
-- [YOU] Decide: accept 145 / 29 as is, or add the backup category `moving-to-the-uae` (D8) and re-crawl (new snapshot id or resume the same one).
+- Decided 2026-11-11: accept 145 EN / 29 visa; `moving-to-the-uae` not added.
 - 19 non-200 responses (all 404): robots.txt, 2 missing AR mirrors, 16 dead EN links. 8 of those are `.ashx` document links; `normalize_url` should also skip `.ashx` (not changed, crawl already done).
 - TDRA: the automated reply (2026-11-10) gives no permission. Phases 15 (HF index upload) and 16 (public demo) are gated on a written answer. [YOU] follow-up sent: not yet.
 
@@ -46,7 +46,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 |---|---|---|---|
 | planning | 2026-11-09 | done | — |
 | 00 setup | 2026-11-09 | done | CI green |
-| 01 crawl | 2026-11-11 | partial | 145 EN / 143 AR pages |
+| 01 crawl | 2026-11-11 | done | 145 EN / 143 AR pages |
 
 ---
 
