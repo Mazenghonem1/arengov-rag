@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -33,3 +34,14 @@ BM25_K1 = 1.5
 BM25_B = 0.75
 BM25_TOP_N = 50
 TOP_K_CONTEXT = 5
+
+# LLM + generation (phase 04)
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "openai")
+GEN_MODEL = "gpt-6-luna"
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gpt-6.1-terra")
+OLLAMA_MODEL = "qwen3:8b"
+OLLAMA_BASE_URL = "http://localhost:11434/v1"
+REASONING_EFFORT = "none"  # lowest value gpt-6-luna accepts (probed phase 04)
+GEN_MAX_TOKENS = 1024
+PRICES_PER_M = {"gpt-6-luna": (0.10, 0.50), "gpt-6.1-terra": (1.00, 5.00)}
+SNIPPET_MAX_CHARS = 300

@@ -1,4 +1,5 @@
 import argparse
+import sys
 from datetime import date
 
 from arengov import config, crawl
@@ -31,7 +32,25 @@ def _search(args):
         print(f"{rank:>2}  {score:7.3f}  {chunks[i]['chunk_id']}  {chunks[i]['heading_path']}")
 
 
+def _ask(args):
+    from arengov.pipeline import answer
+
+    if args.backend:
+        config.LLM_BACKEND = args.backend
+    r = answer([{"role": "user", "content": args.question}], args.lang)
+    print(r["answer"])
+    for c in r["citations"]:
+        print(f"[{c['n']}] {c['title']} - {c['url']}")
+    u = r["usage"]
+    print(f"\nrefused={r['refused']} reason={r['refusal_reason']} lang={r['lang']}")
+    print(
+        f"tokens in/out={u['input_tokens']}/{u['output_tokens']} "
+        f"cost=${u['cost_usd']:.5f} latency={r['latency_ms']:.0f}ms"
+    )
+
+
 def main(argv=None):
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252, breaking Arabic
     parser = argparse.ArgumentParser(prog="arengov")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -55,6 +74,12 @@ def main(argv=None):
     p.add_argument("--no-norm", action="store_true", help="skip normalization/stemming")
     p.add_argument("-k", type=int, default=10)
     p.set_defaults(func=_search)
+
+    p = sub.add_parser("ask", help="answer a question with citations")
+    p.add_argument("question")
+    p.add_argument("--lang", choices=["auto", "ar", "en"], default="auto")
+    p.add_argument("--backend", choices=["openai", "ollama"])
+    p.set_defaults(func=_ask)
 
     args = parser.parse_args(argv)
     args.func(args)
