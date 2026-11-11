@@ -4,32 +4,39 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 00-setup
-**Date:** 2026-11-09
-**Status:** done (Claude part); [YOU] tasks pending
+**Phase:** 01-crawl
+**Date:** 2026-11-11
+**Status:** done (owner accepted 145 EN / visa 29 as is; no backup category)
 
 **Done**
-- Public repo `Mazenghonem1/arengov-rag` created; planning commits on `main`; work on `phase-00-setup`.
-- uv package (`httpx`, `python-dotenv`; dev `pytest`, `ruff`), `config.py` path constants, argparse CLI skeleton, `tests/test_cli.py`, ruff/pytest config.
-- `.gitignore` extended, `.env.example`, MIT `LICENSE`, README stub with bilingual disclaimer, `docs/legal/tdra-request.md`, CI `test` job.
+- `crawl.py` (`normalize_url`, `category_of`, `mirror_url`, `page_id`, `crawl`, `diff`), CLI `crawl` / `diff`, `[01]` config constants, 7 tests (no network).
+- Real crawl, snapshot `2026-11-11`: 307 requests, 1540 s, no abort, robots.txt = 404 (allow all), min gap between requests 3.16 s.
+
+| category | EN | AR | AR missing |
+|---|---|---|---|
+| visa-and-emirates-id | 29 | 28 | 1 |
+| jobs | 68 | 67 | 1 |
+| business | 48 | 48 | 0 |
+| **total** | **145** | **143** | 2 |
+
+- `diff 2026-11-11 2026-11-11`: 0 new / 0 changed / 0 removed. Sampled raw files (jobs EN, business EN, visa AR) are real content pages.
 
 **Deviations from plan**
-- `astral-sh/setup-uv` has no floating major tag, so CI pins `v10.3.3`.
-- `uv init` wrote a `[project.scripts]` entry; repointed to `arengov.__main__:main`.
-- `# noqa: F841` on the unused `sub` in `__main__.py` until phase 01 adds subcommands.
-- Skipped `git pull` before branching (no remote existed yet).
+- `raw_path` is relative to the snapshot dir (`raw/<sha1(url)>.html`).
+- robots.txt is fetched first on every run (one logged request); a status other than 200/404 aborts.
 
-**Metrics:** tests: 1 passed. ruff clean.
+**Metrics:** tests: 8 passed, ruff clean. **Acceptance misses:** EN pages 145 (< 150 target) and visa-and-emirates-id 29 (< 30). Visa and business exhausted their in-scope links (BFS queue empty at depth 3), so this is the site's structure, not the cap or depth limit.
 
 **OpenAI spend:** $0 / $0
 
 **Open issues**
-- [YOU] Send the TDRA email (fill in `[contact address]`); note the date here. Sent: not yet.
-- [YOU] Create/check `.env` from `.env.example`; set the $5 monthly budget in the OpenAI dashboard.
-- Hugging Face username confirmed: `mazenghonem` (differs from GitHub `Mazenghonem1`; D53 and phase 15 updated).
+- Decided 2026-11-11: accept 145 EN / 29 visa; `moving-to-the-uae` not added.
+- 19 non-200 responses (all 404): robots.txt, 2 missing AR mirrors, 16 dead EN links. 8 of those are `.ashx` document links; `normalize_url` should also skip `.ashx` (not changed, crawl already done).
+- TDRA: the automated reply (2026-11-10) gives no permission. Phases 15 (HF index upload) and 16 (public demo) are gated on a written answer. [YOU] follow-up sent: not yet.
 
 **Notes for next phase**
-- Run `uv sync` after pulling. Python 3.12 is managed by uv.
+- Snapshot id for phase 02: `2026-11-11` (`data/` is gitignored; rerun `crawl` locally on a fresh clone).
+- Manifest order: each EN line is followed by its AR line.
 
 **Commit:** see PR
 
@@ -39,6 +46,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 |---|---|---|---|
 | planning | 2026-11-09 | done | — |
 | 00 setup | 2026-11-09 | done | CI green |
+| 01 crawl | 2026-11-11 | done | 145 EN / 143 AR pages |
 
 ---
 

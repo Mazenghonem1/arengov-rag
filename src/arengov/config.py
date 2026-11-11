@@ -10,3 +10,15 @@ SNAPSHOT_ROOT = DATA_DIR / "snapshots"
 INDEX_ROOT = DATA_DIR / "index"
 EVAL_DIR = ROOT / "eval"
 INDEX_VERSION_FILE = EVAL_DIR / "index_version.txt"
+
+# Crawl (phase 01)
+BASE_URL = "https://u.ae"
+CATEGORIES = ("visa-and-emirates-id", "jobs", "business")
+CRAWL_DELAY_S = 3.0
+CRAWL_MAX_DEPTH = 4
+CRAWL_MAX_EN_PER_CATEGORY = 70
+CRAWL_MAX_CONSECUTIVE_ERRORS = 3
+CRAWL_TIMEOUT_S = 30
+USER_AGENT = (
+    "ArEnGovRAG/0.1 (+https://github.com/Mazenghonem1/arengov-rag; non-commercial research)"
+)
