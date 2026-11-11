@@ -1,3 +1,4 @@
+import functools
 import json
 import subprocess
 from collections import Counter
@@ -8,14 +9,24 @@ from pathlib import Path
 import numpy as np
 
 from arengov import config
+from arengov.bm25 import BM25
 from arengov.chunk import chunk_page, count_tokens
 from arengov.clean import clean_html
+from arengov.text_ar import tokenize
 
 
 @dataclass
 class Index:
     chunks: list[dict]
     langs: np.ndarray
+
+    @functools.cached_property
+    def bm25(self) -> BM25:
+        return BM25([tokenize(c["text"]) for c in self.chunks])
+
+    @functools.cached_property
+    def bm25_nonorm(self) -> BM25:  # ablation index, built only when asked for
+        return BM25([tokenize(c["text"], normalize=False) for c in self.chunks])
 
 
 def build_index(snapshot_id: str, index_version: str) -> Path:
@@ -68,6 +79,7 @@ def build_index(snapshot_id: str, index_version: str) -> Path:
     return out
 
 
+@functools.cache
 def load_index(version: str | None = None) -> Index:
     version = version or config.INDEX_VERSION_FILE.read_text("utf-8").strip()
     path = config.INDEX_ROOT / version / "chunks.jsonl"
