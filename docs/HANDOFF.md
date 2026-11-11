@@ -4,40 +4,44 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 02-clean-chunk
+**Phase:** 03-bm25
 **Date:** 2026-11-11
-**Status:** done (owner approved one cleaned page per language and 6 random chunks)
+**Status:** done
 
 **Done**
-- `clean.py` (`clean_html`), `chunk.py` (`count_tokens`, `chunk_page`), `index.py` (`build_index`, `Index`, `load_index`), CLI `build-index`, `[02]` config constants, synthetic EN/AR fixtures, 9 new tests (1 slow).
-- Real build: `data/index/2026-11-11-v1/`; `eval/index_version.txt` = `2026-11-11-v1`.
-- Selectors: `CONTENT_SELECTOR = main#mainContentContainer` (present on all 288 pages). Dropped: script, style, noscript, svg, iframe, ins, form, select, button, `.topic-navigation`, `.artical-info-link`.
+- `text_ar.py` (`is_arabic_char`, `detect_lang`, `normalize_ar`, `tokenize`), `bm25.py` (`BM25`), `pipeline.retrieve` (`mode="bm25"` only), `Index.bm25` / `Index.bm25_nonorm` (lazy `cached_property`), `load_index` cached, CLI `search "Q" [--lang-filter] [--no-norm] [-k]`, `[03]` config constants.
+- Tests: `test_text_ar.py` (every normalization rule, `detect_lang`, `tokenize`), `test_bm25.py` (hand-computed score, order, mask, zero-score, dedup).
 
 **Deviations from plan**
-- u.ae pages have no `h1` (title is in a hero header outside `main`), so the title always comes from `<title>` minus the site suffix.
-- Text outside `h1-h4, p, li, table` is 6.0% of the container's visible text (<10%), so no tags were added. Not captured: `h6` titles and link-card text on landing pages, which are skipped anyway.
+- None. `snowballstemmer` 3.1.1 installed; the Arabic stemmer works.
 
-**Metrics:** tests: 16 passed, ruff clean.
+**Metrics:** tests: 41 passed (1 deselected as slow), ruff clean. BM25 build over 868 chunks: **4.3 s** (limit 30 s).
 
-| | EN | AR |
-|---|---|---|
-| pages kept | 113 | 110 |
-| pages skipped (<200 chars, link-list landing pages) | 32 | 33 |
-| chunks | 419 | 449 |
+Top-3 per sample query (heading_path; EN chunk ids are `en:<page_id>:<i>`):
 
-Chunks per category: visa-and-emirates-id 119, jobs 464, business 285. Tokens (bge-m3): mean 228.1, max 400.
+| Query | Top 3 |
+|---|---|
+| golden visa requirements | Golden visa > Related digital services (types-of-visas, and a duplicate under residence-visas, same score); Golden visa > What is the Golden visa? |
+| trade license types | Starting a business in a free zone > Key steps; Steps to start a business on the mainland > Registering the trade name; … > Applying for a trade licence |
+| how to renew Emirates ID | Emirates ID > Renewing Emirates ID; > Related eServices; > Emirates ID within 24 hours |
+| تجديد الهوية الإماراتية | بطاقة الهوية الإماراتية > تجديد بطاقة الهوية الإماراتية; > الخدمات الإلكترونية ذات الصلة; > ما هي بطاقة الهوية الإماراتية؟ |
+| التأشيرة الذهبية | الإقامة الذهبية > ما هي الإقامة الذهبية؟; > الخدمات الرقمية ذات الصلة; أحكام عامة عن تأشيرة الإقامة > مدة سريان تأشيرة الإقامة |
+| رخصة تجارية | … > التقديم على رخصة تجارية; استعلم عن أسماء الرخص التجارية المسجلة وأنشطتها; التجارة الإلكترونية > تراخيص الأعمال … |
+
+`--no-norm` on "تجديد الهوية الإماراتية": same top 2, but rank 3 becomes the "Emirates ID within 24 hours" chunk (exact-form match on "الهوية") instead of "ما هي بطاقة الهوية". `--lang-filter ar` with an English query returns nothing, as expected (no token overlap).
 
 **OpenAI spend:** $0 / $0
 
 **Open issues**
-- `normalize_url` still doesn't skip `.ashx` (not needed here).
+- "Related digital services" link-only chunks rank first for "golden visa" (the heading repeats the query terms; they are in the chunk text). Known from phase 02; revisit if phase 06 recall suffers.
+- The same page can appear under two URLs (`types-of-visas/golden-visa` and `residence-visas/golden-visa`) with identical scores. Evaluate in phase 06 whether gold `page_id`s need both.
+- The Snowball Arabic stemmer is uneven: "الاقامه" → "اقامه" but bare "اقامه" → "اقام". Acceptable for retrieval; note for the ablation write-up.
 - TDRA: no written permission yet; phases 15-16 stay gated.
-- Link-only sections ("Related digital services") make tiny, weak chunks; revisit only if phase 06 recall shows a problem.
 
 **Notes for next phase**
-- Index version in use: `2026-11-11-v1` (local only, `data/` is gitignored; rebuild with `build-index` on a fresh clone).
-- `build-index` downloads the bge-m3 tokenizer from Hugging Face on first run.
-- H4 headings stay as `#### ` lines inside chunk text.
+- Index version in use: `2026-11-11-v1`.
+- `retrieve` raises `ValueError` for any mode other than `"bm25"`; `use_rerank` is ignored until phase 09.
+- Phase 04 needs an `LLM_BACKEND=ollama` (qwen3:8b) setup for free testing.
 
 **Commit:** see PR
 
@@ -49,6 +53,7 @@ Chunks per category: visa-and-emirates-id 119, jobs 464, business 285. Tokens (b
 | 00 setup | 2026-11-09 | done | CI green |
 | 01 crawl | 2026-11-11 | done | 145 EN / 143 AR pages |
 | 02 clean-chunk | 2026-11-11 | done | 868 chunks (419 EN / 449 AR), max 400 tokens |
+| 03 bm25 | 2026-11-11 | done | BM25 build 4.3 s, 41 tests |
 
 ---
 
