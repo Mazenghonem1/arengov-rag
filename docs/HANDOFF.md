@@ -4,44 +4,50 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 03-bm25
+**Phase:** 04-generate
 **Date:** 2026-11-11
 **Status:** done
 
 **Done**
-- `text_ar.py` (`is_arabic_char`, `detect_lang`, `normalize_ar`, `tokenize`), `bm25.py` (`BM25`), `pipeline.retrieve` (`mode="bm25"` only), `Index.bm25` / `Index.bm25_nonorm` (lazy `cached_property`), `load_index` cached, CLI `search "Q" [--lang-filter] [--no-norm] [-k]`, `[03]` config constants.
-- Tests: `test_text_ar.py` (every normalization rule, `detect_lang`, `tokenize`), `test_bm25.py` (hand-computed score, order, mask, zero-score, dedup).
+- `llm.py` (`LLMResult`, `complete`: one `openai` client, OpenAI or Ollama, judge role always OpenAI), `generate.py` (verbatim prompt, `build_prompt`, `parse_citations`, refusal, `generate`), `pipeline.answer`, CLI `ask "Q" [--lang] [--backend]`, `[04]` config constants.
+- Tests: `test_llm.py`, `test_generate.py`, `test_pipeline.py` (no network).
+- `REASONING_EFFORT = "none"`: `gpt-6-luna` accepted the first value tried.
+- Judge probe: `gpt-6.1-terra` accepts `reasoning_effort="none"` and strict `json_schema` response_format. Both work, so phase 07 is unblocked.
 
 **Deviations from plan**
-- None. `snowballstemmer` 3.1.1 installed; the Arabic stemmer works.
+- `__main__.main` reconfigures stdout to UTF-8 (the Windows cp1252 console crashed on Arabic output).
+- `generate.py` has a file-level `noqa: E501` because the system prompt must stay verbatim.
 
-**Metrics:** tests: 41 passed (1 deselected as slow), ruff clean. BM25 build over 868 chunks: **4.3 s** (limit 30 s).
+**Metrics:** tests: 50 passed (1 deselected as slow), ruff clean.
 
-Top-3 per sample query (heading_path; EN chunk ids are `en:<page_id>:<i>`):
+Smoke tests (BM25 top-5):
 
-| Query | Top 3 |
-|---|---|
-| golden visa requirements | Golden visa > Related digital services (types-of-visas, and a duplicate under residence-visas, same score); Golden visa > What is the Golden visa? |
-| trade license types | Starting a business in a free zone > Key steps; Steps to start a business on the mainland > Registering the trade name; … > Applying for a trade licence |
-| how to renew Emirates ID | Emirates ID > Renewing Emirates ID; > Related eServices; > Emirates ID within 24 hours |
-| تجديد الهوية الإماراتية | بطاقة الهوية الإماراتية > تجديد بطاقة الهوية الإماراتية; > الخدمات الإلكترونية ذات الصلة; > ما هي بطاقة الهوية الإماراتية؟ |
-| التأشيرة الذهبية | الإقامة الذهبية > ما هي الإقامة الذهبية؟; > الخدمات الرقمية ذات الصلة; أحكام عامة عن تأشيرة الإقامة > مدة سريان تأشيرة الإقامة |
-| رخصة تجارية | … > التقديم على رخصة تجارية; استعلم عن أسماء الرخص التجارية المسجلة وأنشطتها; التجارة الإلكترونية > تراخيص الأعمال … |
+| Backend | Question | Lang ok | Citations | Refused | Cost | Latency |
+|---|---|---|---|---|---|---|
+| ollama | How do I renew my Emirates ID? | yes | [1]-[4] valid | no | 0 | 140 s (cold model load) |
+| ollama | What are the golden visa requirements? | yes | [1]-[5] valid | no | 0 | 14 s |
+| ollama | تجديد الهوية الإماراتية | yes | [1],[5] valid | no | 0 | 16 s |
+| ollama | ما هي شروط الإقامة الذهبية؟ | yes | [1],[4] valid | no | 0 | 16 s |
+| ollama | best shawarma in Dubai | yes | 3 related links | yes (`no_answer`) | 0 | 10 s |
+| openai | How do I renew my Emirates ID? | yes | [1] | no | $0.00012 | 6.9 s |
+| openai | ما هي شروط الإقامة الذهبية؟ | yes | [1] | no | $0.00020 | 7.0 s |
 
-`--no-norm` on "تجديد الهوية الإماراتية": same top 2, but rank 3 becomes the "Emirates ID within 24 hours" chunk (exact-form match on "الهوية") instead of "ما هي بطاقة الهوية". `--lang-filter ar` with an English query returns nothing, as expected (no token overlap).
+Oddities: qwen3:8b leaves some sentences uncited, once leaked an English word "(holder)" into Arabic, and the golden-visa answer repeats [1]-[4] as separate entries for the same page. On the AR golden-visa question `gpt-6-luna` said the sources don't give detailed conditions and answered only partly, rather than `NO_ANSWER`; it only sees the top-5 BM25 chunks.
 
-**OpenAI spend:** $0 / $0
+**Measured OpenAI cost per query:** ~$0.00016 (below the $0.001 flag, so the PLAN estimate holds).
+
+**OpenAI spend:** ~$0.0005 / ~$0.0005 (effort probe, 2 smoke calls, 1 judge probe)
 
 **Open issues**
-- "Related digital services" link-only chunks rank first for "golden visa" (the heading repeats the query terms; they are in the chunk text). Known from phase 02; revisit if phase 06 recall suffers.
-- The same page can appear under two URLs (`types-of-visas/golden-visa` and `residence-visas/golden-visa`) with identical scores. Evaluate in phase 06 whether gold `page_id`s need both.
-- The Snowball Arabic stemmer is uneven: "الاقامه" → "اقامه" but bare "اقامه" → "اقام". Acceptable for retrieval; note for the ablation write-up.
+- Citations for the same page are listed separately (one per chunk). Consider dedup by page in the UI (phase 13).
+- Duplicate URLs for the same page (`Types-of-visas` vs `residence-visas`) can both appear in citations (from phase 03).
 - TDRA: no written permission yet; phases 15-16 stay gated.
 
 **Notes for next phase**
 - Index version in use: `2026-11-11-v1`.
-- `retrieve` raises `ValueError` for any mode other than `"bm25"`; `use_rerank` is ignored until phase 09.
-- Phase 04 needs an `LLM_BACKEND=ollama` (qwen3:8b) setup for free testing.
+- Ollama's first call after idle is slow (~2 min for model load); later calls take 10-16 s.
+- `ask` uses `LLM_BACKEND` from the environment; `--backend` overrides it.
+- Phase 05 needs ~7 h of the owner's own time to write questions.
 
 **Commit:** see PR
 
@@ -54,7 +60,7 @@ Top-3 per sample query (heading_path; EN chunk ids are `en:<page_id>:<i>`):
 | 01 crawl | 2026-11-11 | done | 145 EN / 143 AR pages |
 | 02 clean-chunk | 2026-11-11 | done | 868 chunks (419 EN / 449 AR), max 400 tokens |
 | 03 bm25 | 2026-11-11 | done | BM25 build 4.3 s, 41 tests |
-
+| 04 generate | 2026-11-11 | done | ~$0.00016 / OpenAI query, 50 tests |
 ---
 
 ## Template (copy into "Latest handoff")
