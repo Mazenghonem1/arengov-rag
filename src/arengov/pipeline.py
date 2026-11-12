@@ -3,7 +3,7 @@ import time
 from arengov import config
 from arengov.generate import generate, refusal_message
 from arengov.index import load_index
-from arengov.retrieve import dense_search, rrf
+from arengov.retrieve import collapse_pairs, dense_search, rrf
 from arengov.text_ar import detect_lang, tokenize
 
 
@@ -28,12 +28,20 @@ def retrieve(query, *, lang_filter=None, mode="hybrid", use_rerank=True, use_nor
         cands = dense[: config.FUSED_TOP_N]
     else:
         cands = rrf([[i for i, _ in bm25], [i for i, _ in dense]])[: config.FUSED_TOP_N]
+    if use_rerank and cands:
+        from arengov.rerank import rerank  # lazy: importing torch is slow
+
+        reranked = rerank(query, index.chunks, [i for i, _ in cands[: config.RERANK_TOP_N]])
+        top_score = reranked[0][1]
+    else:
+        reranked, top_score = cands, None
+    ranked = collapse_pairs(reranked, index.chunks)
     return {
         "candidates": cands,
-        "ranked": cands,  # no reranker until phase 09
-        "final": cands[: config.TOP_K_CONTEXT],
-        "top_score": None,
-        "stages": {"bm25": bm25, "dense": dense},
+        "ranked": ranked,
+        "final": ranked[: config.TOP_K_CONTEXT],
+        "top_score": top_score,
+        "stages": {"bm25": bm25, "dense": dense, "reranked": reranked},
     }
 
 
@@ -57,6 +65,16 @@ def _citation(n, c):
     }
 
 
+def _refusal(chunks):
+    # up to 3 closest distinct pages, numbered 1-3
+    seen, picked = set(), []
+    for c in chunks:
+        if c["page_id"] not in seen:
+            seen.add(c["page_id"])
+            picked.append(c)
+    return [_citation(n, c) for n, c in enumerate(picked[:3], 1)]
+
+
 def answer(messages, answer_lang="auto"):
     t0 = time.perf_counter()
     question = next(m["content"] for m in reversed(messages) if m["role"] == "user")
@@ -64,32 +82,34 @@ def answer(messages, answer_lang="auto"):
     r = retrieve(question)
     index_chunks = load_index().chunks
     chunks = [index_chunks[i] for i, _ in r["final"]]
-    g = generate(question, chunks, lang)
-    if g["no_answer"]:
-        seen, picked = set(), []
-        for c in chunks:
-            if c["page_id"] not in seen:
-                seen.add(c["page_id"])
-                picked.append(c)
-        citations = [_citation(n, c) for n, c in enumerate(picked[:3], 1)]
-        text, refused, reason = refusal_message(lang), True, "no_answer"
+    tau, top = config.GATE_TAU, r.get("top_score")
+    if tau is not None and top is not None and top < tau:
+        g = None  # gate: no LLM call
+        citations, text, reason = _refusal(chunks), refusal_message(lang), "gate"
+        refused, invalid = True, []
     else:
-        citations = [_citation(n, chunks[n - 1]) for n in g["cited"]]
-        text, refused, reason = g["answer"], False, None
-    llm = g["llm"]
+        g = generate(question, chunks, lang)
+        invalid = g["invalid_citations"]
+        if g["no_answer"]:
+            citations, text, reason = _refusal(chunks), refusal_message(lang), "no_answer"
+            refused = True
+        else:
+            citations = [_citation(n, chunks[n - 1]) for n in g["cited"]]
+            text, refused, reason = g["answer"], False, None
+    llm = g["llm"] if g else None
     return {
         "answer": text,
         "citations": citations,
         "refused": refused,
         "refusal_reason": reason,
-        "invalid_citations": g["invalid_citations"],  # needed by the citation_valid eval check
+        "invalid_citations": invalid,  # needed by the citation_valid eval check
         "lang": lang,
         "rewritten_query": question,
         "final_chunk_ids": [c["chunk_id"] for c in chunks],
         "usage": {
-            "input_tokens": llm.input_tokens,
-            "output_tokens": llm.output_tokens,
-            "cost_usd": llm.cost_usd,
+            "input_tokens": llm.input_tokens if llm else 0,
+            "output_tokens": llm.output_tokens if llm else 0,
+            "cost_usd": llm.cost_usd if llm else 0.0,
         },
         "latency_ms": (time.perf_counter() - t0) * 1000,
         "snapshot_id": chunks[0]["snapshot_id"] if chunks else None,

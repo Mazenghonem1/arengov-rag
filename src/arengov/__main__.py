@@ -93,6 +93,12 @@ def _eval_retrieval(args):
     )
 
 
+def _pick_tau(args):
+    from arengov.eval_retrieval import pick_tau
+
+    pick_tau(args.split)
+
+
 def _eval_answers(args):
     from arengov import eval_answers
 
@@ -194,6 +200,10 @@ def main(argv=None):
     p.add_argument("--out", help="also write the summary JSON here")
     p.add_argument("--rejudge", help="details .jsonl: re-run only the judge on stored outputs")
     p.set_defaults(func=_eval_answers)
+
+    p = sub.add_parser("pick-tau", help="choose the refusal-gate threshold on a split")
+    p.add_argument("--split", choices=["dev", "test"], default="dev")
+    p.set_defaults(func=_pick_tau)
 
     p = sub.add_parser("set-thresholds", help="write eval/thresholds.json from test summaries")
     p.add_argument("retrieval")
