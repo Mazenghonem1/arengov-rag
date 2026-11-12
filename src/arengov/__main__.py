@@ -1,6 +1,7 @@
 import argparse
 import sys
 from datetime import date
+from pathlib import Path
 
 from arengov import config, crawl
 from arengov.index import build_index, load_index
@@ -76,8 +77,6 @@ def _assign_splits(args):
 
 
 def _eval_retrieval(args):
-    from pathlib import Path
-
     from arengov.eval_retrieval import run
 
     run(
@@ -90,6 +89,40 @@ def _eval_retrieval(args):
         record=args.record,
         out=Path(args.out) if args.out else None,
     )
+
+
+def _eval_answers(args):
+    from arengov import eval_answers
+
+    out = Path(args.out) if args.out else None
+    if args.rejudge:
+        eval_answers.rejudge(
+            args.rejudge, args.judge_model, args.label, record=args.record, out=out
+        )
+    elif args.split and args.label:
+        eval_answers.run(
+            args.split,
+            backend=args.backend,
+            judge_model=args.judge_model,
+            label=args.label,
+            record=args.record,
+            out=out,
+        )
+    else:
+        sys.exit("eval-answers needs --split and --label (or --rejudge DETAILS)")
+
+
+def _set_thresholds(args):
+    from arengov.eval_answers import set_thresholds
+
+    set_thresholds(args.retrieval, args.answers)
+
+
+def _check_thresholds(args):
+    from arengov.eval_answers import check_thresholds
+
+    if not check_thresholds([Path(p) for p in args.summaries]):
+        sys.exit(1)
 
 
 def main(argv=None):
@@ -147,6 +180,25 @@ def main(argv=None):
     p.add_argument("--record", action="store_true", help="append a row to docs/results.md")
     p.add_argument("--out", help="also write the summary JSON here")
     p.set_defaults(func=_eval_retrieval)
+
+    p = sub.add_parser("eval-answers", help="answer checks + LLM judge on the eval set")
+    p.add_argument("--split", choices=["dev", "test", "all"])
+    p.add_argument("--label")
+    p.add_argument("--backend", choices=["openai", "ollama"], default="openai")
+    p.add_argument("--judge-model", help="experiments only (default config.JUDGE_MODEL)")
+    p.add_argument("--record", action="store_true", help="append a row to docs/results.md")
+    p.add_argument("--out", help="also write the summary JSON here")
+    p.add_argument("--rejudge", help="details .jsonl: re-run only the judge on stored outputs")
+    p.set_defaults(func=_eval_answers)
+
+    p = sub.add_parser("set-thresholds", help="write eval/thresholds.json from test summaries")
+    p.add_argument("retrieval")
+    p.add_argument("answers")
+    p.set_defaults(func=_set_thresholds)
+
+    p = sub.add_parser("check-thresholds", help="exit 1 if a summary is below its threshold")
+    p.add_argument("summaries", nargs="+")
+    p.set_defaults(func=_check_thresholds)
 
     args = parser.parse_args(argv)
     args.func(args)

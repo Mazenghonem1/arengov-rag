@@ -67,6 +67,7 @@ def answer(messages, answer_lang="auto"):
         "citations": citations,
         "refused": refused,
         "refusal_reason": reason,
+        "invalid_citations": g["invalid_citations"],  # needed by the citation_valid eval check
         "lang": lang,
         "rewritten_query": question,
         "final_chunk_ids": [c["chunk_id"] for c in chunks],

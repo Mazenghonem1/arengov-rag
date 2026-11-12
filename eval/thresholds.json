@@ -1,0 +1,13 @@
+{
+  "split": "test",
+  "retrieval": {
+    "recall@5": 0.75,
+    "mrr@10": 0.55
+  },
+  "answers": {
+    "refusal_correct": 0.8,
+    "lang_match": 0.95,
+    "faithfulness": 0.85,
+    "citation_accuracy": 0.85
+  }
+}

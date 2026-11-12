@@ -1,0 +1,94 @@
+{
+  "kind": "answers",
+  "label": "bm25-baseline",
+  "split": "test",
+  "index_version": "2026-11-11-v1",
+  "git_sha": "ba4c484",
+  "timestamp": "2026-11-12T12:16:24",
+  "backend": "openai",
+  "gen_model": "gpt-6-luna",
+  "judge_model": "gpt-6.1-terra",
+  "n": 20,
+  "n_judged": 13,
+  "errors": 0,
+  "metrics": {
+    "refusal_correct": 0.85,
+    "lang_match": 1.0,
+    "citation_valid": 1.0,
+    "faithfulness": 0.9230769230769231,
+    "correctness": 0.5384615384615384,
+    "citation_accuracy": 0.9230769230769231,
+    "latency_p50_ms": 1092.2310999994806,
+    "latency_p95_ms": 1994.366099999752,
+    "cost_per_q_usd": 0.000174255
+  },
+  "by_lang": {
+    "ar": {
+      "n": 10,
+      "refusal_correct": 0.9,
+      "lang_match": 1.0,
+      "citation_valid": 1.0,
+      "faithfulness": 0.8571428571428571,
+      "correctness": 0.42857142857142855,
+      "citation_accuracy": 0.8571428571428571
+    },
+    "en": {
+      "n": 10,
+      "refusal_correct": 0.8,
+      "lang_match": 1.0,
+      "citation_valid": 1.0,
+      "faithfulness": 1.0,
+      "correctness": 0.6666666666666666,
+      "citation_accuracy": 1.0
+    }
+  },
+  "by_type": {
+    "mixed_script": {
+      "n": 1,
+      "refusal_correct": 1.0,
+      "lang_match": 1.0,
+      "citation_valid": 1.0,
+      "faithfulness": 1.0,
+      "correctness": 0.0,
+      "citation_accuracy": 1.0
+    },
+    "multi_turn": {
+      "n": 3,
+      "refusal_correct": 0.6666666666666666,
+      "lang_match": 1.0,
+      "citation_valid": 1.0,
+      "faithfulness": 1.0,
+      "correctness": 0.5,
+      "citation_accuracy": 1.0
+    },
+    "single": {
+      "n": 12,
+      "refusal_correct": 0.8333333333333334,
+      "lang_match": 1.0,
+      "citation_valid": 1.0,
+      "faithfulness": 0.9,
+      "correctness": 0.6,
+      "citation_accuracy": 0.9
+    },
+    "unanswerable_near": {
+      "n": 2,
+      "refusal_correct": 1.0,
+      "lang_match": 1.0,
+      "citation_valid": null,
+      "faithfulness": null,
+      "correctness": null,
+      "citation_accuracy": null
+    },
+    "unanswerable_oos": {
+      "n": 2,
+      "refusal_correct": 1.0,
+      "lang_match": 1.0,
+      "citation_valid": null,
+      "faithfulness": null,
+      "correctness": null,
+      "citation_accuracy": null
+    }
+  },
+  "gen_cost_usd": 0.0034851,
+  "eval_cost_usd": 0.030268
+}
