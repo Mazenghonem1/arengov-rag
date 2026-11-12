@@ -20,14 +20,16 @@ def _diff(args):
 
 
 def _build_index(args):
-    build_index(args.snapshot, args.version)
+    build_index(args.snapshot, args.version, embed=args.embed)
     config.INDEX_VERSION_FILE.write_text(args.version + "\n", encoding="utf-8")
 
 
 def _search(args):
     from arengov.pipeline import retrieve
 
-    r = retrieve(args.query, lang_filter=args.lang_filter, use_norm=not args.no_norm)
+    r = retrieve(
+        args.query, lang_filter=args.lang_filter, mode=args.mode, use_norm=not args.no_norm
+    )
     chunks = load_index().chunks
     for rank, (i, score) in enumerate(r["ranked"][: args.k], 1):
         print(f"{rank:>2}  {score:7.3f}  {chunks[i]['chunk_id']}  {chunks[i]['heading_path']}")
@@ -142,11 +144,13 @@ def main(argv=None):
     p = sub.add_parser("build-index", help="clean + chunk a snapshot into data/index/<version>/")
     p.add_argument("--snapshot", required=True)
     p.add_argument("--version", required=True)
+    p.add_argument("--embed", action="store_true", help="also compute bge-m3 embeddings (GPU)")
     p.set_defaults(func=_build_index)
 
-    p = sub.add_parser("search", help="BM25 search over the index")
+    p = sub.add_parser("search", help="search the index (bm25, dense or hybrid)")
     p.add_argument("query")
     p.add_argument("--lang-filter", choices=["ar", "en"])
+    p.add_argument("--mode", choices=["bm25", "dense", "hybrid"], default="hybrid")
     p.add_argument("--no-norm", action="store_true", help="skip normalization/stemming")
     p.add_argument("-k", type=int, default=10)
     p.set_defaults(func=_search)
@@ -173,7 +177,7 @@ def main(argv=None):
     p = sub.add_parser("eval-retrieval", help="recall@k / MRR on the eval set")
     p.add_argument("--split", choices=["dev", "test", "all"], required=True)
     p.add_argument("--label", required=True)
-    p.add_argument("--mode", default="bm25")
+    p.add_argument("--mode", choices=["bm25", "dense", "hybrid"], default="hybrid")
     p.add_argument("--cross-lingual", action="store_true")
     p.add_argument("--no-norm", action="store_true")
     p.add_argument("--no-rerank", action="store_true")

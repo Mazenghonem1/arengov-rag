@@ -10,3 +10,9 @@ One row per recorded run (`--record`). Retrieval rows fill the retrieval columns
 | 2026-11-12 | bm25-nonorm | test | 2026-11-11-v1 | bm25 | no | yes | no | 75% | 88% | 0.65 | — | — | — | — | — | — | — | — | — | — |
 | 2026-11-12 | bm25-baseline | dev | 2026-11-11-v1 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 95% | 100% | 100% | 91% | 56% | 94% | 1827 | $0.00019 |
 | 2026-11-12 | bm25-baseline | test | 2026-11-11-v1 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 85% | 100% | 100% | 92% | 54% | 92% | 1994 | $0.00017 |
+| 2026-11-12 | dense | test | 2026-11-11-v2 | dense | no | yes | yes | 88% | 100% | 0.71 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-12 | hybrid | test | 2026-11-11-v2 | hybrid | no | yes | yes | 88% | 100% | 0.71 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-12 | dense-xling | test | 2026-11-11-v2 | dense | yes | yes | yes | 94% | 100% | 0.88 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-12 | hybrid-xling | test | 2026-11-11-v2 | hybrid | yes | yes | yes | 94% | 100% | 0.88 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-12 | hybrid | dev | 2026-11-11-v2 | hybrid | no | yes | yes | 94% | 97% | 0.90 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-12 | hybrid | test | 2026-11-11-v2 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 90% | 100% | 100% | 100% | 50% | 100% | 2269 | $0.00018 |

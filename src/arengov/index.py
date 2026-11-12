@@ -1,6 +1,7 @@
 import functools
 import json
 import subprocess
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -19,6 +20,7 @@ from arengov.text_ar import tokenize
 class Index:
     chunks: list[dict]
     langs: np.ndarray
+    embeddings: np.ndarray | None = None
 
     @functools.cached_property
     def bm25(self) -> BM25:
@@ -29,7 +31,7 @@ class Index:
         return BM25([tokenize(c["text"], normalize=False) for c in self.chunks])
 
 
-def build_index(snapshot_id: str, index_version: str) -> Path:
+def build_index(snapshot_id: str, index_version: str, embed: bool = False) -> Path:
     out = config.INDEX_ROOT / index_version
     if out.exists():
         raise FileExistsError(f"{out} exists; pick a new version")
@@ -56,6 +58,14 @@ def build_index(snapshot_id: str, index_version: str) -> Path:
     with (out / "chunks.jsonl").open("w", encoding="utf-8") as f:
         for c in chunks:
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
+    if embed:
+        from arengov.embed import device, embed_texts
+
+        t0 = time.perf_counter()
+        emb = embed_texts([c["text"] for c in chunks])  # raw text, never normalized (D16)
+        assert emb.shape == (len(chunks), 1024), emb.shape
+        np.save(out / "embeddings.npy", emb)
+        print(f"embedded {len(chunks)} chunks on {device()} in {time.perf_counter() - t0:.0f}s")
     try:
         sha = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True
@@ -65,7 +75,7 @@ def build_index(snapshot_id: str, index_version: str) -> Path:
     meta_out = {
         "index_version": index_version,
         "snapshot_id": snapshot_id,
-        "embed_model": None,
+        "embed_model": config.EMBED_MODEL if embed else None,
         "n_chunks": len(chunks),
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_sha": sha,
@@ -84,4 +94,8 @@ def load_index(version: str | None = None) -> Index:
     version = version or config.INDEX_VERSION_FILE.read_text("utf-8").strip()
     path = config.INDEX_ROOT / version / "chunks.jsonl"
     chunks = [json.loads(line) for line in path.read_text("utf-8").splitlines()]
-    return Index(chunks=chunks, langs=np.array([c["lang"] for c in chunks]))
+    emb_path = path.with_name("embeddings.npy")
+    emb = np.load(emb_path) if emb_path.exists() else None
+    if emb is not None:
+        assert emb.shape == (len(chunks), 1024), emb.shape
+    return Index(chunks=chunks, langs=np.array([c["lang"] for c in chunks]), embeddings=emb)

@@ -14,8 +14,10 @@ dependencies = [
     "numpy>=2.5.4",
     "openai>=3.49.0",
     "python-dotenv>=1.2.4",
+    "sentence-transformers>=6.3.0",
     "snowballstemmer>=3.1.1",
     "tokenizers>=0.23.3",
+    "torch>=2.11.0",
 ]
 
 [project.scripts]
@@ -40,4 +42,20 @@ markers = ["slow: loads ML models or uses the network"]
 dev = [
     "pytest>=9.2.0",
     "ruff>=0.17.4",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cuda", marker = "sys_platform == 'win32'" },
+  { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
 ]
