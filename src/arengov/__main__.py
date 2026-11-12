@@ -49,6 +49,32 @@ def _ask(args):
     )
 
 
+def _sample_pages(args):
+    from arengov.evalset import sample_pages
+
+    sample_pages(args.n, args.seed)
+
+
+def _validate_eval(args):
+    from arengov.evalset import count_table, validate
+
+    path = config.EVAL_DIR / "questions.jsonl"
+    errors = validate(path, strict=args.strict)
+    print(count_table(path))
+    for e in errors:
+        print(e)
+    if errors:
+        print(f"{len(errors)} error(s)")
+        sys.exit(1)
+    print("ok")
+
+
+def _assign_splits(args):
+    from arengov.evalset import assign_splits
+
+    assign_splits(config.EVAL_DIR / "questions.jsonl", args.seed)
+
+
 def main(argv=None):
     sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252, breaking Arabic
     parser = argparse.ArgumentParser(prog="arengov")
@@ -80,6 +106,19 @@ def main(argv=None):
     p.add_argument("--lang", choices=["auto", "ar", "en"], default="auto")
     p.add_argument("--backend", choices=["openai", "ollama"])
     p.set_defaults(func=_ask)
+
+    p = sub.add_parser("sample-pages", help="random EN pages per category to write questions from")
+    p.add_argument("--n", type=int, default=30)
+    p.add_argument("--seed", type=int, default=1)
+    p.set_defaults(func=_sample_pages)
+
+    p = sub.add_parser("validate-eval", help="check eval/questions.jsonl")
+    p.add_argument("--strict", action="store_true", help="also check counts and splits")
+    p.set_defaults(func=_validate_eval)
+
+    p = sub.add_parser("assign-splits", help="seeded dev/test split of eval/questions.jsonl")
+    p.add_argument("--seed", type=int, default=13)
+    p.set_defaults(func=_assign_splits)
 
     args = parser.parse_args(argv)
     args.func(args)
