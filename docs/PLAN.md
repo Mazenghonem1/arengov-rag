@@ -100,7 +100,7 @@ ask: messages → [rewrite] → retrieve(bm25 + dense → RRF → rerank → col
 | `bm25.py` | 03 | `class BM25(docs_tokens, k1, b)` with `.search(query_tokens, top_n, mask=None) -> list[tuple[int, float]]` |
 | `llm.py` | 04 | `LLMResult` dataclass `(text, input_tokens, output_tokens, latency_ms, cost_usd, model)`; `complete(system, messages, max_tokens, *, role="gen", json_schema=None) -> LLMResult` |
 | `generate.py` | 04 | `build_prompt(question, chunks, answer_lang) -> tuple[str, list]`, `parse_citations(text, n) -> tuple[str, list[int], list[int]]`, `refusal_message(lang) -> str`, `generate(question, chunks, answer_lang) -> dict` |
-| `pipeline.py` | 03 | `retrieve(query, *, lang_filter=None, mode=…, use_rerank=True, use_norm=True) -> dict` (03: only `mode="bm25"`, which is the default until 08 makes `"hybrid"` the default); 04 adds `answer(messages, answer_lang="auto") -> dict` |
+| `pipeline.py` | 03 | `retrieve(query, *, lang_filter=None, mode=…, use_rerank=True, use_norm=True) -> dict` (`mode` ∈ `bm25|dense|hybrid`; the default is `"hybrid"` since 08 and needs an index built with `--embed`); 04 adds `answer(messages, answer_lang="auto") -> dict` |
 | `evalset.py` | 05 | `sample_pages(n, seed)`, `validate(path) -> list[str]` (errors), `assign_splits(path, seed)` |
 | `eval_retrieval.py` | 06 | `run(split, *, mode, use_rerank, use_norm, cross_lingual, label, record) -> dict` |
 | `eval_answers.py` | 07 | `run(split, *, backend, label, record) -> dict` |

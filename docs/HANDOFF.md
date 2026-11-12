@@ -4,47 +4,48 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 07-answer-eval
+**Phase:** 08-dense-hybrid
 **Date:** 2026-11-12
 **Status:** done
 
 **Done**
-- `judge.py`, `eval_answers.py` (`run`, `rejudge`, `set_thresholds`, `check_thresholds`), CLI `eval-answers`, `set-thresholds`, `check-thresholds`; tests in `test_judge.py`, `test_eval_answers.py`, `test_thresholds.py` (90 passed, ruff clean).
-- BM25 answer baseline recorded for dev and test; `eval/thresholds.json` written from the test split; `check-thresholds` passes on the phase-06 and phase-07 test summaries.
+- torch from the `cu128` index on Windows (driver reports CUDA 13.5; `torch 2.11.0+cu128`, `cuda.is_available()` True on the RTX 3060 Ti), CPU index on Linux. `embed.py`, `retrieve.py` (`dense_search`, `rrf`), `build-index --embed`, `--mode bm25|dense|hybrid` on `search` and `eval-retrieval`, `Index.embeddings`. Default mode is now `hybrid` (PLAN.md edited).
+- Index `2026-11-11-v2` built: 868 chunks, `chunk_id`s identical to v1, `embeddings.npy` (868, 1024), **embedding took 133 s on the GPU** (the plan said 15-30 min). `eval/index_version.txt` = `2026-11-11-v2`.
+- Thresholds ratcheted from the hybrid test summaries; `check-thresholds` passes. 95 tests passed (incl. slow), ruff clean.
 
 **Deviations from plan**
-- `pipeline.answer` also returns `invalid_citations` (PLAN.md edited): `citation_valid` needs it because `parse_citations` strips out-of-range markers from the text.
-- `run`/`rejudge` also take `out=`. `eval_cost_usd` is judge cost only; `gen_cost_usd` is stored separately.
-- Ollama smoke run skipped: the judge always uses OpenAI, so there is no free end-to-end run.
+- `pipeline` imports `embed` lazily (inside the dense branch) so BM25-only paths and fast tests don't import torch.
+- `eval-retrieval` and `search` CLI default `--mode` is now `hybrid` (was bm25).
 
-**Metrics** (BM25, index `2026-11-11-v1`, gen `gpt-6-luna`, judge `gpt-6.1-terra`)
+**Metrics** (test split unless stated; index `2026-11-11-v2`)
 
-| split | n | judged | refusal | lang | cite valid | faithful | correct | cite acc | p95 ms | $/q |
-|---|---|---|---|---|---|---|---|---|---|---|
-| dev | 40 | 32 | 95% | 100% | 100% | 91% | 56% | 94% | 1827 | $0.00019 |
-| test | 20 | 13 | 85% | 100% | 100% | 92% | 54% | 92% | 1994 | $0.00017 |
+| run | recall@5 | recall@20 | mrr@10 |
+|---|---|---|---|
+| bm25 (v1) | 81% | 88% | 0.64 |
+| dense | 88% | 100% | 0.71 |
+| hybrid | 88% | 100% | 0.71 |
+| hybrid, dev | 94% | 97% | 0.90 |
+| bm25 xling (v1) | 6% | 6% | 0.06 |
+| dense xling | 94% | 100% | 0.88 |
+| hybrid xling | 94% | 100% | 0.88 |
 
-Thresholds (test): recall@5 0.75, mrr@10 0.55, refusal_correct 0.80, lang_match 0.95, faithfulness 0.85, citation_accuracy 0.85. `correctness` is not gated (D37).
+Answers, hybrid test (gen `gpt-6-luna`, judge `gpt-6.1-terra`): refusal 90% (was 85), lang 100%, cite valid 100%, faithfulness 100% (was 92), correctness 50% (was 54), citation accuracy 100% (was 92); p95 2269 ms; failed refusal q022, q037; gen $0.00018/q.
 
-**Top 5 dev failures** (the full list is in the dev details file)
-1. **Judge strictness on key facts (q004, q008, q011, q019, q025, q030, q044, q046 and others: 14 of 32 fail correctness).** Answers are short and correct but omit a secondary key fact (e.g. q030 names the regulator but not the example platforms). Not a pipeline bug. The key facts were written by Claude, so owner review (phase 11) decides whether they are too demanding. Read the 56% as a floor, not as quality.
-2. **Over-refusal (q007, q010; test q005, q022, q037).** The gold page is already in the top 3 chunks, yet the generator answers NO_ANSWER. Cause: generator or prompt over-caution, not retrieval. Worth testing a different prompt or the rerank gate (phase 09).
-3. **Retrieval miss (q032, q023, q046).** Gold page not in the top 5 or crowded out ("trade name" vs National Economic Register; "UAE" noise). The answer then comes from a wrong page, so correctness fails. Dense retrieval (phase 08) should help.
-4. **Multi-turn context lost (q038, q040, q041, q044, q046).** The last turn alone has no referent, so retrieval and answer drift (q038 answers about virtual work visas; q041 fabricates a free-zone timing). Fixed by rewriting in phase 10.
-5. **Slight unfaithfulness (q016, q041, q038).** Small unsupported additions ("specified in your contract", "per month", merged timeframes). Rare: 3 of 32. Two of the three come with multi-turn context loss.
+New thresholds (test): recall@5 0.80, mrr@10 0.65, refusal_correct 0.85, lang_match 0.95, faithfulness 0.95, citation_accuracy 0.95.
 
-**OpenAI spend:** $0.118 this phase (dev: judge $0.077 + gen $0.008; test: judge $0.030 + gen $0.003) / ~$0.119 cumulative of $5. Under the $0.24 estimate; the test run's `eval_cost_usd` was $0.030 (limit $0.15).
+**What it shows:** dense retrieval fixes BM25's cross-lingual blind spot (xling recall@5 6% to 94%) and lifts same-language recall too. On this small test set hybrid equals dense overall (88% / 0.71 for both, though per-language rows differ), so RRF's gain over dense alone is not demonstrated here. Dev hybrid (94% / 0.90) is the larger sample.
+
+**OpenAI spend:** $0.036 this phase (answer eval test: judge $0.0325 + gen $0.0037) / ~$0.155 cumulative of $5. Retrieval evals use no OpenAI.
 
 **Open issues**
-- All gold labels and key facts are `llm_assisted` and unreviewed; the correctness numbers and the thresholds depend on them.
-- Test split is 20 questions (13 judged): one question moves a rate by 5-8 points.
-- TDRA: no written permission yet; phases 15-16 stay gated.
-- q045 gold label may be too narrow (carried over).
+- All 60 questions are still `llm_assisted`, gold labels unreviewed. The test split is 20 questions, so one question moves recall by about 6 points; read "hybrid == dense" and the xling number (94%, above same-language 88%) with that in mind. Xling is higher partly because the language filter limits search to a smaller pool.
+- Correctness 50% still reflects judge strictness on key facts (not gated, D37). Over-refusals q022, q037 remain (phase 09 gate).
+- Dense-only was not run on dev, so there is no dev dense vs hybrid comparison.
+- TDRA permission still pending; phases 15-16 stay gated.
 
 **Notes for next phase**
-- Phase 08 answer eval on test costs about $0.04, not $0.08 (measured). The PLAN estimates are about 2x too high.
-- `set-thresholds` ratchets: re-running it with worse numbers never lowers a gate.
-- Index version in use: `2026-11-11-v1`.
+- Index version in use: `2026-11-11-v2`. `embeddings.npy` is local only (gitignored); CI cannot run hybrid until phase 15 uploads the index.
+- The HF warning about `HF_TOKEN` is harmless.
 - Carried over: citation dedup (phase 13); `Types-of-visas` vs `residence-visas` duplicate URLs.
 
 **Commit:** see PR
@@ -62,6 +63,7 @@ Thresholds (test): recall@5 0.75, mrr@10 0.55, refusal_correct 0.80, lang_match 
 | 05 eval-set | 2026-11-12 | done | 60 questions (40 dev / 20 test), 72 tests |
 | 06 retrieval-eval | 2026-11-12 | done | BM25 recall@5 91% dev / 81% test; xling 6% |
 | 07 answer-eval | 2026-11-12 | done | faithfulness 91% dev / 92% test, correctness 56% / 54%; $0.12 |
+| 08 dense-hybrid | 2026-11-12 | done | hybrid recall@5 88% test / 94% dev, xling 94%; $0.04 |
 ---
 
 ## Template (copy into "Latest handoff")
