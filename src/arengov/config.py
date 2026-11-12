@@ -45,3 +45,6 @@ REASONING_EFFORT = "none"  # lowest value gpt-6-luna accepts (probed phase 04)
 GEN_MAX_TOKENS = 1024
 PRICES_PER_M = {"gpt-6-luna": (0.10, 0.50), "gpt-6.1-terra": (1.00, 5.00)}
 SNIPPET_MAX_CHARS = 300
+
+# Judge (phase 07)
+JUDGE_MAX_TOKENS = 800
