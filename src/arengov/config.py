@@ -48,3 +48,9 @@ SNIPPET_MAX_CHARS = 300
 
 # Judge (phase 07)
 JUDGE_MAX_TOKENS = 800
+
+# Dense + hybrid (phase 08)
+EMBED_MODEL = "BAAI/bge-m3"
+DENSE_TOP_N = 50
+RRF_K = 60
+FUSED_TOP_N = 20

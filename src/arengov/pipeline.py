@@ -3,22 +3,37 @@ import time
 from arengov import config
 from arengov.generate import generate, refusal_message
 from arengov.index import load_index
+from arengov.retrieve import dense_search, rrf
 from arengov.text_ar import detect_lang, tokenize
 
 
-def retrieve(query, *, lang_filter=None, mode="bm25", use_rerank=True, use_norm=True):
-    if mode != "bm25":
-        raise ValueError(f"mode {mode!r} not available until phase 08")
+def retrieve(query, *, lang_filter=None, mode="hybrid", use_rerank=True, use_norm=True):
+    if mode not in ("bm25", "dense", "hybrid"):
+        raise ValueError(f"unknown mode {mode!r}")
     index = load_index()
     mask = index.langs == lang_filter if lang_filter else None
-    bm25 = index.bm25 if use_norm else index.bm25_nonorm
-    hits = bm25.search(tokenize(query, normalize=use_norm), config.BM25_TOP_N, mask)
+    bm25, dense = [], []
+    if mode in ("bm25", "hybrid"):
+        bm25_index = index.bm25 if use_norm else index.bm25_nonorm
+        bm25 = bm25_index.search(tokenize(query, normalize=use_norm), config.BM25_TOP_N, mask)
+    if mode in ("dense", "hybrid"):
+        if index.embeddings is None:
+            raise RuntimeError("index has no embeddings; rebuild with --embed")
+        from arengov.embed import embed_query  # lazy: importing torch is slow
+
+        dense = dense_search(embed_query(query), index.embeddings, config.DENSE_TOP_N, mask)
+    if mode == "bm25":
+        cands = bm25[: config.FUSED_TOP_N]
+    elif mode == "dense":
+        cands = dense[: config.FUSED_TOP_N]
+    else:
+        cands = rrf([[i for i, _ in bm25], [i for i, _ in dense]])[: config.FUSED_TOP_N]
     return {
-        "candidates": hits[:20],
-        "ranked": hits,
-        "final": hits[: config.TOP_K_CONTEXT],
+        "candidates": cands,
+        "ranked": cands,  # no reranker until phase 09
+        "final": cands[: config.TOP_K_CONTEXT],
         "top_score": None,
-        "stages": {"bm25": hits},
+        "stages": {"bm25": bm25, "dense": dense},
     }
 
 
