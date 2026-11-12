@@ -1,0 +1,54 @@
+{
+  "kind": "retrieval",
+  "label": "bm25-baseline",
+  "split": "test",
+  "index_version": "2026-11-11-v1",
+  "git_sha": "10ba197",
+  "timestamp": "2026-11-12T09:50:27",
+  "config": {
+    "mode": "bm25",
+    "use_rerank": true,
+    "use_norm": true,
+    "cross_lingual": false
+  },
+  "n": 16,
+  "metrics": {
+    "recall@5": 0.8125,
+    "recall@20": 0.875,
+    "mrr@10": 0.6360119047619047
+  },
+  "by_lang": {
+    "ar": {
+      "recall@5": 0.75,
+      "recall@20": 0.75,
+      "mrr@10": 0.5416666666666666,
+      "n": 8
+    },
+    "en": {
+      "recall@5": 0.875,
+      "recall@20": 1.0,
+      "mrr@10": 0.7303571428571428,
+      "n": 8
+    }
+  },
+  "by_type": {
+    "mixed_script": {
+      "recall@5": 1.0,
+      "recall@20": 1.0,
+      "mrr@10": 0.2,
+      "n": 1
+    },
+    "multi_turn": {
+      "recall@5": 0.6666666666666666,
+      "recall@20": 0.6666666666666666,
+      "mrr@10": 0.5,
+      "n": 3
+    },
+    "single": {
+      "recall@5": 0.8333333333333334,
+      "recall@20": 0.9166666666666666,
+      "mrr@10": 0.7063492063492064,
+      "n": 12
+    }
+  }
+}

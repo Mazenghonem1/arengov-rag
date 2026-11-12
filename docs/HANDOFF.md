@@ -4,42 +4,49 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 05-eval-set
+**Phase:** 06-retrieval-eval
 **Date:** 2026-11-12
-**Status:** done (Part A + B in one session; questions written by Claude, not the owner)
+**Status:** done
 
 **Done**
-- `evalset.py` (`sample_pages`, `validate`, `assign_splits`, plus `count_table`), CLI `sample-pages`, `validate-eval [--strict]`, `assign-splits`.
-- `eval/README.md` labeling guide, empty `eval/questions.jsonl`, `tests/test_evalset.py`.
+- `eval_retrieval.py` (`hit_at`, `rr_at`, `run`), CLI `eval-retrieval [--split --label --mode --cross-lingual --no-norm --no-rerank --record --out]`, `docs/results.md`, `tests/test_eval_retrieval.py`.
+- 4 baseline runs recorded; summaries in `eval/results/*.json` (committed), details in `eval/results/details/` (gitignored).
 
 **Deviations from plan**
-- The owner asked Claude to write the 60 questions. All have `origin: "llm_assisted"`, written from the cleaned page text of index `2026-11-11-v1`, so phrasing may be biased toward LLM style. Owner should review them (especially the 6 `unanswerable_near` and the gold labels) before relying on test numbers.
-- Numbers in key facts and reference answers were checked automatically against the gold pages' text; the other facts were checked by reading, not by script.
-- Several gold labels list two page_ids: `golden-visa` (exists under `types-of-visas/` with an AR twin, and under `residence-visas/` EN only) and `employing-minors` (EN-only duplicate `employment-and-training-of-minors`).
+- `run` also takes `out=` (the `--out` CLI option). Answerable questions are 34 on dev and 16 on test (6 and 4 unanswerable excluded).
+- mrr@10 is shown as a 0-1 score in `results.md`, not a percentage.
 
-**Metrics:** tests: 72 passed (1 deselected as slow), ruff clean. `validate-eval --strict` passes.
+**Metrics** (BM25, index `2026-11-11-v1`)
 
-| type | lang | dev | test |
-|---|---|---|---|
-| single | ar / en | 12 / 12 | 6 / 6 |
-| multi_turn | ar / en | 3 / 4 | 2 / 1 |
-| unanswerable_near | ar / en | 2 / 2 | 1 / 1 |
-| unanswerable_oos | ar / en | 1 / 1 | 1 / 1 |
-| mixed_script | ar / en | 2 / 1 | 0 / 1 |
+| label | split | n | recall@5 | recall@20 | mrr@10 |
+|---|---|---|---|---|---|
+| bm25-baseline | dev | 34 | 91% | 97% | 0.78 |
+| bm25-baseline | test | 16 | 81% | 88% | 0.64 |
+| bm25-xling | test | 16 | 6% | 6% | 0.06 |
+| bm25-nonorm | test | 16 | 75% | 88% | 0.65 |
 
-Spot-check (BM25 `search`, last turn, top 10; preview only): 5 of 5 had a gold page in the top 10 (q017 rank 1, q058 rank 1, q023 rank 3, q040 rank 3, q045 rank 7).
+- Cross-lingual is near 0 as expected. The one hit (q059) is a mixed-script English question containing the Arabic word "تصريح عمل", which matches Arabic chunks. Not a mask bug.
+- Normalization helps Arabic on test (recall@5 62% -> 75% for ar, 1 question = 12.5 points) and does nothing for English. n=8, so treat as a hint.
+- tests: 74 passed (1 deselected as slow), ruff clean.
+
+**5 worst dev misses** (3 true recall@5 misses, 2 low-rank hits)
+1. q032 (ar) "how do I know if a trade name is available" -> gold National Economic Register; top-3 are business-setup pages. Vocabulary mismatch: the gold page is about the register, the query says "trade name".
+2. q038 (en, multi-turn) "What salary do I need for that?" -> gold Residence visa for families; top-3 are salary/wages pages. The last turn alone lacks the referent from the earlier turn. Needs rewriting (phase 10).
+3. q045 (ar, multi-turn) "where do I file the complaint?" -> gold Payment of wages; top-3 are labour-dispute pages. Same cause: context lost; the gold choice is also arguable (disputes pages are plausible answers).
+4. q057 (ar, mixed) "overtime percentage in private companies" -> gold Working hours and overtime at rank 4; top-3 are company-setup pages. The English word "overtime" can't match Arabic chunks, so only "private companies" matches. Cross-script/vocabulary.
+5. q023 (ar) "minimum working age in UAE" -> gold Employing minors at rank 3; "UAE/Emirates"-heavy company pages outrank it. Common-word noise; dense retrieval should help.
 
 **OpenAI spend:** $0 this phase / ~$0.0005 cumulative
 
 **Open issues**
-- Some pages exist in only one language (e.g. golden-visa has no AR pair in the sample); `sample-pages` shows "—" for those.
+- Test split is 16 answerable questions: 1 question = 6 points, so differences under ~12 points are noise.
+- q045's gold label may be too narrow (owner review of llm_assisted labels still pending).
 - TDRA: no written permission yet; phases 15-16 stay gated.
 
 **Notes for next phase**
-- Splits come from `assign-splits --seed 13`; re-running it after editing questions changes them, so edit questions first.
-- The test split has only 20 questions: 1 question = 5 points.
+- Phase 07 reuses `eval/results/` naming and appends to the same `docs/results.md` table (answer columns).
 - Index version in use: `2026-11-11-v1`.
-- Carried over from phase 04: citations for the same page are listed separately (consider dedup in phase 13); `Types-of-visas` vs `residence-visas` duplicate URLs.
+- Carried over: citation dedup (phase 13); `Types-of-visas` vs `residence-visas` duplicate URLs.
 
 **Commit:** see PR
 
@@ -54,6 +61,7 @@ Spot-check (BM25 `search`, last turn, top 10; preview only): 5 of 5 had a gold p
 | 03 bm25 | 2026-11-11 | done | BM25 build 4.3 s, 41 tests |
 | 04 generate | 2026-11-11 | done | ~$0.00016 / OpenAI query, 50 tests |
 | 05 eval-set | 2026-11-12 | done | 60 questions (40 dev / 20 test), 72 tests |
+| 06 retrieval-eval | 2026-11-12 | done | BM25 recall@5 91% dev / 81% test; xling 6% |
 ---
 
 ## Template (copy into "Latest handoff")

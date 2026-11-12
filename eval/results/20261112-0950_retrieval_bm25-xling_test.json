@@ -1,0 +1,54 @@
+{
+  "kind": "retrieval",
+  "label": "bm25-xling",
+  "split": "test",
+  "index_version": "2026-11-11-v1",
+  "git_sha": "10ba197",
+  "timestamp": "2026-11-12T09:50:33",
+  "config": {
+    "mode": "bm25",
+    "use_rerank": true,
+    "use_norm": true,
+    "cross_lingual": true
+  },
+  "n": 16,
+  "metrics": {
+    "recall@5": 0.0625,
+    "recall@20": 0.0625,
+    "mrr@10": 0.0625
+  },
+  "by_lang": {
+    "ar": {
+      "recall@5": 0.0,
+      "recall@20": 0.0,
+      "mrr@10": 0.0,
+      "n": 8
+    },
+    "en": {
+      "recall@5": 0.125,
+      "recall@20": 0.125,
+      "mrr@10": 0.125,
+      "n": 8
+    }
+  },
+  "by_type": {
+    "mixed_script": {
+      "recall@5": 1.0,
+      "recall@20": 1.0,
+      "mrr@10": 1.0,
+      "n": 1
+    },
+    "multi_turn": {
+      "recall@5": 0.0,
+      "recall@20": 0.0,
+      "mrr@10": 0.0,
+      "n": 3
+    },
+    "single": {
+      "recall@5": 0.0,
+      "recall@20": 0.0,
+      "mrr@10": 0.0,
+      "n": 12
+    }
+  }
+}

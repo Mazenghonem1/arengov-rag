@@ -75,6 +75,23 @@ def _assign_splits(args):
     assign_splits(config.EVAL_DIR / "questions.jsonl", args.seed)
 
 
+def _eval_retrieval(args):
+    from pathlib import Path
+
+    from arengov.eval_retrieval import run
+
+    run(
+        args.split,
+        mode=args.mode,
+        use_rerank=not args.no_rerank,
+        use_norm=not args.no_norm,
+        cross_lingual=args.cross_lingual,
+        label=args.label,
+        record=args.record,
+        out=Path(args.out) if args.out else None,
+    )
+
+
 def main(argv=None):
     sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252, breaking Arabic
     parser = argparse.ArgumentParser(prog="arengov")
@@ -119,6 +136,17 @@ def main(argv=None):
     p = sub.add_parser("assign-splits", help="seeded dev/test split of eval/questions.jsonl")
     p.add_argument("--seed", type=int, default=13)
     p.set_defaults(func=_assign_splits)
+
+    p = sub.add_parser("eval-retrieval", help="recall@k / MRR on the eval set")
+    p.add_argument("--split", choices=["dev", "test", "all"], required=True)
+    p.add_argument("--label", required=True)
+    p.add_argument("--mode", default="bm25")
+    p.add_argument("--cross-lingual", action="store_true")
+    p.add_argument("--no-norm", action="store_true")
+    p.add_argument("--no-rerank", action="store_true")
+    p.add_argument("--record", action="store_true", help="append a row to docs/results.md")
+    p.add_argument("--out", help="also write the summary JSON here")
+    p.set_defaults(func=_eval_retrieval)
 
     args = parser.parse_args(argv)
     args.func(args)
