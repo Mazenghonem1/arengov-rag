@@ -42,9 +42,9 @@ uv run python -m arengov --help          # the one CLI (crawl, build-index, sear
 
 ## Working rules (one phase per session)
 
-1. **Start:** read `CLAUDE.md`, `docs/PLAN.md`, `docs/HANDOFF.md`, and the current phase file. Restate the goal and your plan in a few lines, then **wait for the owner's "go"**. On "go": `git switch main && git pull`, then `git switch -c phase-NN-<name>` (see PLAN.md § Git workflow).
+1. **Start:** read `CLAUDE.md`, `docs/PLAN.md`, `docs/HANDOFF.md`, and the current phase file. Restate the goal and your plan in a few lines, then go ahead without waiting for a "go": `git switch main && git pull`, then `git switch -c phase-NN-<name>` (see PLAN.md § Git workflow).
 2. **During:** follow the phase file. It already contains the design decisions. When something it needs is missing or contradicts reality, collect the questions and ask them **in one batch**, each with a recommended default, instead of guessing.
-3. **End:** run tests and the evals the phase names; update `docs/HANDOFF.md` (done, deviations, metrics, open issues, notes for next phase); commit, push, open the PR; then stop and tell the owner to merge once CI is green and `/clear` before the next phase.
-4. Start the next phase only when the owner asks for it in a new session.
+3. **End:** run tests and the evals the phase names; update `docs/HANDOFF.md` (done, deviations, metrics, open issues, notes for next phase); commit, push, open the PR, **read the CI result**, and squash-merge only when it is green; then end with a ready-to-paste prompt that starts the next phase (same shape as the one that started this phase: goal, context from HANDOFF, the OpenAI cost rule) and tell the owner to `/clear` first.
+4. Start the next phase only in a new session (after `/clear`), from the pasted prompt. [YOU] tasks and "let the owner pick" steps still stop and wait.
 5. Tasks marked **[YOU]** are the owner's. Explain exactly what to do, then wait.
 6. From phase 15 on: when a phase changes generation-related files (`generate.py`, `llm.py`, `rewrite.py`, `pipeline.py`, `retrieve.py`, `rerank.py`, `judge.py`, `eval_answers.py`, `config.py`, `eval/*`), trigger the answer gate manually with `gh workflow run eval-answers.yml --ref <branch>` and report its result in the PR.
