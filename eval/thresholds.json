@@ -1,11 +1,11 @@
 {
   "split": "test",
   "retrieval": {
-    "recall@5": 0.8,
-    "mrr@10": 0.75
+    "recall@5": 0.85,
+    "mrr@10": 0.8
   },
   "answers": {
-    "refusal_correct": 0.85,
+    "refusal_correct": 0.9,
     "lang_match": 0.95,
     "faithfulness": 0.95,
     "citation_accuracy": 0.95

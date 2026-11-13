@@ -90,13 +90,14 @@ def _eval_retrieval(args):
         label=args.label,
         record=args.record,
         out=Path(args.out) if args.out else None,
+        backend=args.backend,
     )
 
 
 def _pick_tau(args):
     from arengov.eval_retrieval import pick_tau
 
-    pick_tau(args.split)
+    pick_tau(args.split, args.backend)
 
 
 def _eval_answers(args):
@@ -187,6 +188,7 @@ def main(argv=None):
     p.add_argument("--cross-lingual", action="store_true")
     p.add_argument("--no-norm", action="store_true")
     p.add_argument("--no-rerank", action="store_true")
+    p.add_argument("--backend", choices=["openai", "ollama"], default="openai")
     p.add_argument("--record", action="store_true", help="append a row to docs/results.md")
     p.add_argument("--out", help="also write the summary JSON here")
     p.set_defaults(func=_eval_retrieval)
@@ -203,6 +205,7 @@ def main(argv=None):
 
     p = sub.add_parser("pick-tau", help="choose the refusal-gate threshold on a split")
     p.add_argument("--split", choices=["dev", "test"], default="dev")
+    p.add_argument("--backend", choices=["openai", "ollama"], default="openai")
     p.set_defaults(func=_pick_tau)
 
     p = sub.add_parser("set-thresholds", help="write eval/thresholds.json from test summaries")

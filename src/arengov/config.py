@@ -60,3 +60,7 @@ RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 RERANK_TOP_N = 20
 RERANK_MAX_LENGTH = 512
 GATE_TAU = 0.298  # pick-tau on dev: F1 0.83, refuses 1/27 answerable
+
+# Multi-turn rewriting (phase 10)
+HISTORY_MAX_TURNS = 3
+REWRITE_MAX_TOKENS = 200

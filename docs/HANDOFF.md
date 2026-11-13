@@ -4,43 +4,42 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 09-rerank-gate
-**Date:** 2026-11-12
-**Status:** done, except `check-thresholds` fails on 2 answer metrics (see Open issues)
+**Phase:** 10-multiturn
+**Date:** 2026-11-13
+**Status:** done
 
 **Done**
-- `rerank.py` (bge-reranker-v2-m3, sigmoid via `activation_fn`, sentence-transformers 6.3.0), `retrieve.collapse_pairs`, `pipeline.retrieve` reranks the top-20 then collapses translation pairs (`stages["reranked"]` added), `pipeline.answer` gates before `generate` (`refusal_reason="gate"`, no LLM call, usage 0), shared `_refusal` helper, `pick-tau` CLI (`eval_retrieval.choose_tau` / `pick_tau`).
-- **`GATE_TAU = 0.298`**, picked on dev (33 questions, multi-turn excluded; 6 should-refuse): best F1 0.83 (precision 0.83, recall 0.83), refuses 1/27 answerable (q057), safety rule passes. q050 (unanswerable) scores 0.97, so only `NO_ANSWER` can catch it.
-- 101 tests passed (incl. slow), ruff clean. 4 rows added to `docs/results.md`. `eval/thresholds.json`: mrr@10 0.65 -> 0.75 (ratchet).
+- `rewrite.py` (user messages only, last 3 + new one), `pipeline.answer` rewrites when there is history, retrieves and generates with the rewritten query, detects lang from the original, adds rewrite tokens/cost to `usage`.
+- `eval-retrieval` and `pick-tau` take `--backend` (default `openai`) and rewrite multi-turn questions; `pick-tau` now includes multi-turn.
+- **`GATE_TAU` stays 0.298**: re-picked on dev with multi-turn included (34 q), best tau 0.2983, F1 0.83, refuses 1/34 answerable (q057).
+- `ui/examples.json`: en = transit visa validity (q006); ar = domestic worker leave and rest (q022, cites the English `domestic-helpers` page); ar_followup = "وهل لها تذكرة سفر؟" (rewritten correctly, answered with a citation to the English page); offtopic = UK work visa (q054, refused). Checked on OpenAI, except en/off-topic, which came from the eval details.
+- 102 tests passed (not slow), ruff clean. 4 rows added to `docs/results.md`. Thresholds ratcheted: recall@5 0.80->0.85, mrr@10 0.75->0.80, refusal_correct 0.85->0.90; `check-thresholds` passes.
 
 **Deviations from plan**
-- None to contracts. `pick-tau` takes only `--split` (no `--backend`: it makes no LLM calls).
+- None to contracts. Rewriter debugging on Ollama needed `REWRITE_MAX_TOKENS` raised in the debug script only: qwen3 thinks despite `/no_think` and hits 200 tokens (the code then falls back to the original question). OpenAI is unaffected (reasoning effort none).
 
-**Metrics** (index `2026-11-11-v2`; phase 08 hybrid -> phase 09 rerank+collapse+gate)
+**Metrics** (index `2026-11-11-v2`; phase 09 -> phase 10)
 
-| run | recall@5 | recall@20 | mrr@10 |
-|---|---|---|---|
-| test | 88% -> 88% | 100% -> 100% | 0.71 -> 0.82 |
-| test xling | 94% -> 94% | 100% -> 100% | 0.88 -> 0.80 |
-| dev | 94% -> 97% | 97% -> 97% | 0.90 -> 0.87 |
+| run | recall@5 | recall@20 | mrr@10 | multi-turn recall@5 |
+|---|---|---|---|---|
+| test | 88% -> 94% | 100% -> 100% | 0.82 -> 0.88 | 33% -> 67% (n=3) |
+| dev | 97% -> 97% | 97% -> 97% | 0.87 -> 0.94 | not measured -> 100% (n=7) |
 
-Rerank raises same-language test MRR but **lowers MRR on xling test and on dev**; recall@5 holds or rises. Test n=16, so read with care. Test multi-turn recall@5 is 33% (no rewriting until phase 10).
+Answers (gen `gpt-6-luna`, judge `gpt-6.1-terra`): test refusal 90% -> 95%, faithfulness 93% -> 100%, correctness 50% -> 53%, citation accuracy 93% -> 100% (15 judged). Dev: refusal 90%, faithfulness 100%, correctness 53%, citation accuracy 97% (30 judged). Test multi-turn refusal 67% (q043 still over-refused); dev multi-turn refusal 71%.
 
-Answers, test (gen `gpt-6-luna`, judge `gpt-6.1-terra`; 14 judged): refusal 90% (was 90; q022 now fixed, q043 new, q037 still failing), lang 100%, cite valid 100%, faithfulness 93% (was 100), correctness 50% (was 50), citation accuracy 93% (was 100); p50/p95 1944/2890 ms; gen $0.00016/q. The one faithfulness/citation miss is q005 (answer said "either" for requirements that are cumulative), 1 of 14 judged.
-
-**CPU rerank latency** (20 candidates, 10 queries, 12-thread desktop CPU): p50 11.9 s, p95 12.4 s. Far above the 3 s HF limit; phase 16 needs top-10 or smaller, and probably more than that.
-
-**OpenAI spend:** $0.037 this phase (judge $0.0342 + gen $0.0032) / ~$0.192 cumulative of $5.
+**OpenAI spend:** about $0.12 this phase (test answers $0.040, dev answers $0.080, retrieval rewrites and pick-tau ~$0.0005 estimated, demo checks ~$0.002) / about $0.31 cumulative of $5.
 
 **Open issues**
-- `check-thresholds` fails: faithfulness and citation_accuracy are 0.929 vs min 0.95, from a single judged answer (q005). Thresholds were not lowered (ratchet never lowers). Owner decision needed.
-- Gold labels still all `llm_assisted`, unreviewed. Over-refusals q037, q043 remain. Multi-turn follow-ups fail until phase 10, which also re-picks tau including them.
-- tau rests on only 6 unanswerable dev questions.
+- Gold labels still all `llm_assisted`, unreviewed. Over-refusals: q043 (test), q034/q039/q040/q057 (dev), mostly gate or no_answer on cross-lingual or mixed-script questions.
+- A cross-lingual question about minors' minimum age was refused by the gate (top score under tau) even though the English page was retrieved: tau may hurt AR->EN questions. Worth checking in phase 11/13.
+- tau rests on only 6 unanswerable dev questions. Test multi-turn n=3 is tiny.
+- Correctness is about 53%: answers often omit key facts (e.g. q022 omits the flight ticket). No fix planned here.
 - TDRA permission pending; phases 15-16 gated.
 
 **Notes for next phase**
-- Index version `2026-11-11-v2`, embeddings local only. The reranker loads on GPU locally (~2-3 s per query on top of retrieval).
-- Carried over: citation dedup (phase 13); `Types-of-visas` vs `residence-visas` duplicate URLs.
+- Index version `2026-11-11-v2`, embeddings local only. Stored answer details for dev and test (`*_answers_rewrite_*`) are in `eval/results/details/`; phase 11 grades these.
+- The multi-turn demo example only works because the follow-up is rewritten; q023's follow-up ("and may they work at night?") fails, so avoid it.
+- CPU rerank latency still ~12 s (phase 16).
 
 **Commit:** see PR
 
@@ -59,6 +58,7 @@ Answers, test (gen `gpt-6-luna`, judge `gpt-6.1-terra`; 14 judged): refusal 90% 
 | 07 answer-eval | 2026-11-12 | done | faithfulness 91% dev / 92% test, correctness 56% / 54%; $0.12 |
 | 08 dense-hybrid | 2026-11-12 | done | hybrid recall@5 88% test / 94% dev, xling 94%; $0.04 |
 | 09 rerank-gate | 2026-11-12 | done* | tau 0.298 (dev F1 0.83), test mrr@10 0.82; $0.04 |
+| 10 multiturn | 2026-11-13 | done | multi-turn recall@5 test 33% -> 67%, dev 100%; $0.12 |
 ---
 
 ## Template (copy into "Latest handoff")

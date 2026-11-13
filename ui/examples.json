@@ -1,0 +1,6 @@
+[
+  {"id": "en", "label": "English question", "messages": ["How long is a UAE transit visa valid and can it be extended?"]},
+  {"id": "ar", "label": "سؤال بالعربية", "messages": ["ما حقوق العاملة المنزلية في الإجازة والراحة؟"]},
+  {"id": "ar_followup", "label": "متابعة", "messages": ["وهل لها تذكرة سفر؟"], "after": "ar"},
+  {"id": "offtopic", "label": "Off-topic question", "messages": ["How do I apply for a UK work visa from the UAE?"]}
+]
