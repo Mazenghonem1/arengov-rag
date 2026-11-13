@@ -22,3 +22,14 @@ def rrf(rankings, k=config.RRF_K):
         for rank, idx in enumerate(ranking, 1):
             fused[idx] = fused.get(idx, 0.0) + 1 / (k + rank)
     return sorted(fused.items(), key=lambda t: (-t[1], t[0]))
+
+
+def collapse_pairs(ranked, chunks):
+    # the first language seen for a page wins; its translation is the same evidence
+    first_lang: dict[str, str] = {}
+    out = []
+    for idx, score in ranked:
+        c = chunks[idx]
+        if first_lang.setdefault(c["page_id"], c["lang"]) == c["lang"]:
+            out.append((idx, score))
+    return out

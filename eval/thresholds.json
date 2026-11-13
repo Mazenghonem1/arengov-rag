@@ -2,7 +2,7 @@
   "split": "test",
   "retrieval": {
     "recall@5": 0.8,
-    "mrr@10": 0.65
+    "mrr@10": 0.75
   },
   "answers": {
     "refusal_correct": 0.85,

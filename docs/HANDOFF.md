@@ -4,48 +4,42 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 08-dense-hybrid
+**Phase:** 09-rerank-gate
 **Date:** 2026-11-12
-**Status:** done
+**Status:** done, except `check-thresholds` fails on 2 answer metrics (see Open issues)
 
 **Done**
-- torch from the `cu128` index on Windows (driver reports CUDA 13.5; `torch 2.11.0+cu128`, `cuda.is_available()` True on the RTX 3060 Ti), CPU index on Linux. `embed.py`, `retrieve.py` (`dense_search`, `rrf`), `build-index --embed`, `--mode bm25|dense|hybrid` on `search` and `eval-retrieval`, `Index.embeddings`. Default mode is now `hybrid` (PLAN.md edited).
-- Index `2026-11-11-v2` built: 868 chunks, `chunk_id`s identical to v1, `embeddings.npy` (868, 1024), **embedding took 133 s on the GPU** (the plan said 15-30 min). `eval/index_version.txt` = `2026-11-11-v2`.
-- Thresholds ratcheted from the hybrid test summaries; `check-thresholds` passes. 95 tests passed (incl. slow), ruff clean.
+- `rerank.py` (bge-reranker-v2-m3, sigmoid via `activation_fn`, sentence-transformers 6.3.0), `retrieve.collapse_pairs`, `pipeline.retrieve` reranks the top-20 then collapses translation pairs (`stages["reranked"]` added), `pipeline.answer` gates before `generate` (`refusal_reason="gate"`, no LLM call, usage 0), shared `_refusal` helper, `pick-tau` CLI (`eval_retrieval.choose_tau` / `pick_tau`).
+- **`GATE_TAU = 0.298`**, picked on dev (33 questions, multi-turn excluded; 6 should-refuse): best F1 0.83 (precision 0.83, recall 0.83), refuses 1/27 answerable (q057), safety rule passes. q050 (unanswerable) scores 0.97, so only `NO_ANSWER` can catch it.
+- 101 tests passed (incl. slow), ruff clean. 4 rows added to `docs/results.md`. `eval/thresholds.json`: mrr@10 0.65 -> 0.75 (ratchet).
 
 **Deviations from plan**
-- `pipeline` imports `embed` lazily (inside the dense branch) so BM25-only paths and fast tests don't import torch.
-- `eval-retrieval` and `search` CLI default `--mode` is now `hybrid` (was bm25).
+- None to contracts. `pick-tau` takes only `--split` (no `--backend`: it makes no LLM calls).
 
-**Metrics** (test split unless stated; index `2026-11-11-v2`)
+**Metrics** (index `2026-11-11-v2`; phase 08 hybrid -> phase 09 rerank+collapse+gate)
 
 | run | recall@5 | recall@20 | mrr@10 |
 |---|---|---|---|
-| bm25 (v1) | 81% | 88% | 0.64 |
-| dense | 88% | 100% | 0.71 |
-| hybrid | 88% | 100% | 0.71 |
-| hybrid, dev | 94% | 97% | 0.90 |
-| bm25 xling (v1) | 6% | 6% | 0.06 |
-| dense xling | 94% | 100% | 0.88 |
-| hybrid xling | 94% | 100% | 0.88 |
+| test | 88% -> 88% | 100% -> 100% | 0.71 -> 0.82 |
+| test xling | 94% -> 94% | 100% -> 100% | 0.88 -> 0.80 |
+| dev | 94% -> 97% | 97% -> 97% | 0.90 -> 0.87 |
 
-Answers, hybrid test (gen `gpt-6-luna`, judge `gpt-6.1-terra`): refusal 90% (was 85), lang 100%, cite valid 100%, faithfulness 100% (was 92), correctness 50% (was 54), citation accuracy 100% (was 92); p95 2269 ms; failed refusal q022, q037; gen $0.00018/q.
+Rerank raises same-language test MRR but **lowers MRR on xling test and on dev**; recall@5 holds or rises. Test n=16, so read with care. Test multi-turn recall@5 is 33% (no rewriting until phase 10).
 
-New thresholds (test): recall@5 0.80, mrr@10 0.65, refusal_correct 0.85, lang_match 0.95, faithfulness 0.95, citation_accuracy 0.95.
+Answers, test (gen `gpt-6-luna`, judge `gpt-6.1-terra`; 14 judged): refusal 90% (was 90; q022 now fixed, q043 new, q037 still failing), lang 100%, cite valid 100%, faithfulness 93% (was 100), correctness 50% (was 50), citation accuracy 93% (was 100); p50/p95 1944/2890 ms; gen $0.00016/q. The one faithfulness/citation miss is q005 (answer said "either" for requirements that are cumulative), 1 of 14 judged.
 
-**What it shows:** dense retrieval fixes BM25's cross-lingual blind spot (xling recall@5 6% to 94%) and lifts same-language recall too. On this small test set hybrid equals dense overall (88% / 0.71 for both, though per-language rows differ), so RRF's gain over dense alone is not demonstrated here. Dev hybrid (94% / 0.90) is the larger sample.
+**CPU rerank latency** (20 candidates, 10 queries, 12-thread desktop CPU): p50 11.9 s, p95 12.4 s. Far above the 3 s HF limit; phase 16 needs top-10 or smaller, and probably more than that.
 
-**OpenAI spend:** $0.036 this phase (answer eval test: judge $0.0325 + gen $0.0037) / ~$0.155 cumulative of $5. Retrieval evals use no OpenAI.
+**OpenAI spend:** $0.037 this phase (judge $0.0342 + gen $0.0032) / ~$0.192 cumulative of $5.
 
 **Open issues**
-- All 60 questions are still `llm_assisted`, gold labels unreviewed. The test split is 20 questions, so one question moves recall by about 6 points; read "hybrid == dense" and the xling number (94%, above same-language 88%) with that in mind. Xling is higher partly because the language filter limits search to a smaller pool.
-- Correctness 50% still reflects judge strictness on key facts (not gated, D37). Over-refusals q022, q037 remain (phase 09 gate).
-- Dense-only was not run on dev, so there is no dev dense vs hybrid comparison.
-- TDRA permission still pending; phases 15-16 stay gated.
+- `check-thresholds` fails: faithfulness and citation_accuracy are 0.929 vs min 0.95, from a single judged answer (q005). Thresholds were not lowered (ratchet never lowers). Owner decision needed.
+- Gold labels still all `llm_assisted`, unreviewed. Over-refusals q037, q043 remain. Multi-turn follow-ups fail until phase 10, which also re-picks tau including them.
+- tau rests on only 6 unanswerable dev questions.
+- TDRA permission pending; phases 15-16 gated.
 
 **Notes for next phase**
-- Index version in use: `2026-11-11-v2`. `embeddings.npy` is local only (gitignored); CI cannot run hybrid until phase 15 uploads the index.
-- The HF warning about `HF_TOKEN` is harmless.
+- Index version `2026-11-11-v2`, embeddings local only. The reranker loads on GPU locally (~2-3 s per query on top of retrieval).
 - Carried over: citation dedup (phase 13); `Types-of-visas` vs `residence-visas` duplicate URLs.
 
 **Commit:** see PR
@@ -64,6 +58,7 @@ New thresholds (test): recall@5 0.80, mrr@10 0.65, refusal_correct 0.85, lang_ma
 | 06 retrieval-eval | 2026-11-12 | done | BM25 recall@5 91% dev / 81% test; xling 6% |
 | 07 answer-eval | 2026-11-12 | done | faithfulness 91% dev / 92% test, correctness 56% / 54%; $0.12 |
 | 08 dense-hybrid | 2026-11-12 | done | hybrid recall@5 88% test / 94% dev, xling 94%; $0.04 |
+| 09 rerank-gate | 2026-11-12 | done* | tau 0.298 (dev F1 0.83), test mrr@10 0.82; $0.04 |
 ---
 
 ## Template (copy into "Latest handoff")
