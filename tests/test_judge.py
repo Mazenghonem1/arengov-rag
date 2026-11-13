@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from arengov import judge as J
 
 CHUNKS = [{"lang": "en", "title": "T1", "url": "http://u/1", "text": "Body one"}]
@@ -87,3 +89,42 @@ def test_export_blind(tmp_path):
     key = json.loads((out / "key.json").read_text("utf-8"))
     assert key["1"]["q_id"] == "q1" and key["1"]["judge"]["correctness"] is False
     assert (out / "grades.csv").read_text().splitlines()[1] == "1,,,,"
+
+
+def test_kappa_textbook():
+    assert J.kappa(20, 5, 10, 15) == pytest.approx(0.40)  # po 0.70, pe 0.50
+
+
+def test_kappa_all_same_label_is_none():
+    assert J.kappa(10, 0, 0, 0) is None
+
+
+def test_agreement(tmp_path):
+    key = {
+        str(i): {
+            "q_id": f"q{i}",
+            "split": "dev" if i < 3 else "test",
+            "judge": {c: i != 1 for c in J.CRITERIA},
+        }
+        for i in (1, 2, 3, 4)
+    }
+    (tmp_path / "k.json").write_text(json.dumps(key))
+    (tmp_path / "g.csv").write_text(
+        "item_id,faithfulness,correctness,citation_accuracy,note\n"
+        + "".join(f"{i},1,1,1,\n" for i in (1, 2, 3, 4))
+    )
+    r = J.agreement(tmp_path / "g.csv", tmp_path / "k.json")["faithfulness"]
+    assert r["n"] == 4 and r["agreement"] == 0.75 and r["disagreements"] == ["q1"]
+    assert r["confusion"] == {"jp_hp": 3, "jp_hf": 0, "jf_hp": 1, "jf_hf": 0}
+    assert r["dev"]["n"] == 2 and r["test"]["agreement"] == 1.0
+
+
+def test_agreement_rejects_blank(tmp_path):
+    (tmp_path / "k.json").write_text(
+        json.dumps({"1": {"q_id": "q1", "split": "dev", "judge": {c: True for c in J.CRITERIA}}})
+    )
+    (tmp_path / "g.csv").write_text(
+        "item_id,faithfulness,correctness,citation_accuracy,note\n1,1,,1,\n"
+    )
+    with pytest.raises(ValueError, match="correctness"):
+        J.agreement(tmp_path / "g.csv", tmp_path / "k.json")

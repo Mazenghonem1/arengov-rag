@@ -6,14 +6,38 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 **Phase:** 11-judge-validation
 **Date:** 2026-11-13
-**Status:** partial: Part A done, waiting on [YOU] grading
+**Status:** done (with a caveat: the grades are Claude's, not the owner's, at the owner's request)
 
-**Done (Part A)**
-- `judge.export_blind` + CLI `judge-export`; 45 items (test + dev `rewrite` details, both judged by `gpt-6.1-terra`) written to gitignored `eval/grading/` (`items.md`, `grades.csv`, `key.json`). Test added; 103 tests pass, ruff clean.
+**Done**
+- `judge.export_blind`, `judge.agreement`, `judge.kappa`, `judge.record_agreement`; CLI `judge-export`, `judge-agreement`. 107 tests pass (not slow), ruff clean.
+- 45 items (dev 30 + test 15) graded blind (judge verdicts and `key.json` not read) by **Claude Sonnet 5.5**, not a human. `grades.csv` rows carry note `claude-graded`; results rows are labelled `claude-v1`.
+- Judge target met on every criterion, so no `JUDGE_SYSTEM` revision and no re-judge.
 
-**OpenAI spend:** $0 this phase so far / about $0.31 cumulative of $5.
+**Deviations from plan**
+- The phase file requires the owner's grades. The owner asked Claude to grade instead. So the numbers measure gpt-6.1-terra vs Claude agreement, **not human agreement**. The README must not say "agrees with human grades". Re-grade by hand (~2.5 h) and run `judge-agreement --label human-v1 --record` to get the real number; the grading sheet stays in `eval/grading/` (local).
 
-**Next:** owner fills `eval/grading/grades.csv` (1/0 per criterion, blind), then new session on this branch: "phase 11 Part B".
+**Metrics** (claude-v1; judge vs Claude grades)
+
+| criterion | n | agreement | κ | judge pass / grader pass |
+|---|---|---|---|---|
+| faithfulness | 45 | 100% | undefined (all pass) | 45 / 45 |
+| correctness | 45 | 98% | 0.96 | 24 / 25 (1 judge fail, grader pass: test) |
+| citation_accuracy | 45 | 100% | 1.00 | 44 / 44 |
+
+Test only: correctness 93% (κ 0.86), the others 100%. Faithfulness κ is undefined because every answer passed, so it says nothing about whether the judge can catch an unfaithful answer.
+
+**OpenAI spend:** $0 this phase / about $0.31 cumulative of $5.
+
+**Open issues**
+- Grades are not human (see above). Same model family could share blind spots with the judge.
+- The ~53% correctness is real, not judge strictness: the grader also failed 20/45, nearly always because the answer omits a key fact (e.g. q022-style omissions), which matches the strict rubric.
+- Faithfulness and citation accuracy have almost no failures, so their agreement is weakly informative.
+- Gold labels still `llm_assisted`; TDRA permission pending.
+
+**Notes for next phase**
+- Phase 12 needs Docker Desktop installed. Index version `2026-11-11-v2`, GATE_TAU 0.298 unchanged.
+
+**Commit:** see PR #14
 
 ## History
 
@@ -31,6 +55,7 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 | 08 dense-hybrid | 2026-11-12 | done | hybrid recall@5 88% test / 94% dev, xling 94%; $0.04 |
 | 09 rerank-gate | 2026-11-12 | done* | tau 0.298 (dev F1 0.83), test mrr@10 0.82; $0.04 |
 | 10 multiturn | 2026-11-13 | done | multi-turn recall@5 test 33% -> 67%, dev 100%; $0.12 |
+| 11 judge-validation | 2026-11-13 | done* | judge vs Claude-graded: correctness 98%, κ 0.96 (not human); $0 |
 ---
 
 ## Template (copy into "Latest handoff")

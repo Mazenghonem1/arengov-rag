@@ -127,6 +127,12 @@ def _judge_export(args):
     print("items:", export_blind(args.details))
 
 
+def _judge_agreement(args):
+    from arengov.judge import record_agreement
+
+    record_agreement(args.label, args.grades, args.key, args.record)
+
+
 def _set_thresholds(args):
     from arengov.eval_answers import set_thresholds
 
@@ -217,6 +223,13 @@ def main(argv=None):
     p = sub.add_parser("judge-export", help="write the blind grading sheet to eval/grading/")
     p.add_argument("details", nargs="+")
     p.set_defaults(func=_judge_export)
+
+    p = sub.add_parser("judge-agreement", help="agreement + kappa between judge and graded sheet")
+    p.add_argument("--grades", default="eval/grading/grades.csv")
+    p.add_argument("--key", default="eval/grading/key.json")
+    p.add_argument("--label", required=True)
+    p.add_argument("--record", action="store_true", help="append rows to docs/results.md")
+    p.set_defaults(func=_judge_agreement)
 
     p = sub.add_parser("set-thresholds", help="write eval/thresholds.json from test summaries")
     p.add_argument("retrieval")
