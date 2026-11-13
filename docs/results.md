@@ -24,3 +24,11 @@ One row per recorded run (`--record`). Retrieval rows fill the retrieval columns
 | 2026-11-13 | rewrite | dev | 2026-11-11-v2 | hybrid | no | yes | yes | 97% | 97% | 0.94 | — | — | — | — | — | — | — | — | — | — |
 | 2026-11-13 | rewrite | test | 2026-11-11-v2 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 95% | 100% | 100% | 100% | 53% | 100% | 2883 | $0.00018 |
 | 2026-11-13 | rewrite | dev | 2026-11-11-v2 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 90% | 100% | 100% | 100% | 53% | 97% | 2601 | $0.00017 |
+
+## Judge validation
+
+| date | label | criterion | n | agreement | κ | judge pass / human pass |
+|---|---|---|---|---|---|---|
+| 2026-11-13 | claude-v1 | faithfulness | 45 | 100% | undefined | 45 / 45 |
+| 2026-11-13 | claude-v1 | correctness | 45 | 98% | 0.96 | 24 / 25 |
+| 2026-11-13 | claude-v1 | citation_accuracy | 45 | 100% | 1.00 | 44 / 44 |

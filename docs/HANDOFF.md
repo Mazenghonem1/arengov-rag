@@ -4,44 +4,40 @@ Read at the start of every phase. At the end of each phase, **replace** the "Lat
 
 ## Latest handoff
 
-**Phase:** 10-multiturn
+**Phase:** 11-judge-validation
 **Date:** 2026-11-13
-**Status:** done
+**Status:** done (with a caveat: the grades are Claude's, not the owner's, at the owner's request)
 
 **Done**
-- `rewrite.py` (user messages only, last 3 + new one), `pipeline.answer` rewrites when there is history, retrieves and generates with the rewritten query, detects lang from the original, adds rewrite tokens/cost to `usage`.
-- `eval-retrieval` and `pick-tau` take `--backend` (default `openai`) and rewrite multi-turn questions; `pick-tau` now includes multi-turn.
-- **`GATE_TAU` stays 0.298**: re-picked on dev with multi-turn included (34 q), best tau 0.2983, F1 0.83, refuses 1/34 answerable (q057).
-- `ui/examples.json`: en = transit visa validity (q006); ar = domestic worker leave and rest (q022, cites the English `domestic-helpers` page); ar_followup = "وهل لها تذكرة سفر؟" (rewritten correctly, answered with a citation to the English page); offtopic = UK work visa (q054, refused). Checked on OpenAI, except en/off-topic, which came from the eval details.
-- 102 tests passed (not slow), ruff clean. 4 rows added to `docs/results.md`. Thresholds ratcheted: recall@5 0.80->0.85, mrr@10 0.75->0.80, refusal_correct 0.85->0.90; `check-thresholds` passes.
+- `judge.export_blind`, `judge.agreement`, `judge.kappa`, `judge.record_agreement`; CLI `judge-export`, `judge-agreement`. 107 tests pass (not slow), ruff clean.
+- 45 items (dev 30 + test 15) graded blind (judge verdicts and `key.json` not read) by **Claude Sonnet 5.5**, not a human. `grades.csv` rows carry note `claude-graded`; results rows are labelled `claude-v1`.
+- Judge target met on every criterion, so no `JUDGE_SYSTEM` revision and no re-judge.
 
 **Deviations from plan**
-- None to contracts. Rewriter debugging on Ollama needed `REWRITE_MAX_TOKENS` raised in the debug script only: qwen3 thinks despite `/no_think` and hits 200 tokens (the code then falls back to the original question). OpenAI is unaffected (reasoning effort none).
+- The phase file requires the owner's grades. The owner asked Claude to grade instead. So the numbers measure gpt-6.1-terra vs Claude agreement, **not human agreement**. The README must not say "agrees with human grades". Re-grade by hand (~2.5 h) and run `judge-agreement --label human-v1 --record` to get the real number; the grading sheet stays in `eval/grading/` (local).
 
-**Metrics** (index `2026-11-11-v2`; phase 09 -> phase 10)
+**Metrics** (claude-v1; judge vs Claude grades)
 
-| run | recall@5 | recall@20 | mrr@10 | multi-turn recall@5 |
+| criterion | n | agreement | κ | judge pass / grader pass |
 |---|---|---|---|---|
-| test | 88% -> 94% | 100% -> 100% | 0.82 -> 0.88 | 33% -> 67% (n=3) |
-| dev | 97% -> 97% | 97% -> 97% | 0.87 -> 0.94 | not measured -> 100% (n=7) |
+| faithfulness | 45 | 100% | undefined (all pass) | 45 / 45 |
+| correctness | 45 | 98% | 0.96 | 24 / 25 (1 judge fail, grader pass: test) |
+| citation_accuracy | 45 | 100% | 1.00 | 44 / 44 |
 
-Answers (gen `gpt-6-luna`, judge `gpt-6.1-terra`): test refusal 90% -> 95%, faithfulness 93% -> 100%, correctness 50% -> 53%, citation accuracy 93% -> 100% (15 judged). Dev: refusal 90%, faithfulness 100%, correctness 53%, citation accuracy 97% (30 judged). Test multi-turn refusal 67% (q043 still over-refused); dev multi-turn refusal 71%.
+Test only: correctness 93% (κ 0.86), the others 100%. Faithfulness κ is undefined because every answer passed, so it says nothing about whether the judge can catch an unfaithful answer.
 
-**OpenAI spend:** about $0.12 this phase (test answers $0.040, dev answers $0.080, retrieval rewrites and pick-tau ~$0.0005 estimated, demo checks ~$0.002) / about $0.31 cumulative of $5.
+**OpenAI spend:** $0 this phase / about $0.31 cumulative of $5.
 
 **Open issues**
-- Gold labels still all `llm_assisted`, unreviewed. Over-refusals: q043 (test), q034/q039/q040/q057 (dev), mostly gate or no_answer on cross-lingual or mixed-script questions.
-- A cross-lingual question about minors' minimum age was refused by the gate (top score under tau) even though the English page was retrieved: tau may hurt AR->EN questions. Worth checking in phase 11/13.
-- tau rests on only 6 unanswerable dev questions. Test multi-turn n=3 is tiny.
-- Correctness is about 53%: answers often omit key facts (e.g. q022 omits the flight ticket). No fix planned here.
-- TDRA permission pending; phases 15-16 gated.
+- Grades are not human (see above). Same model family could share blind spots with the judge.
+- The ~53% correctness is real, not judge strictness: the grader also failed 20/45, nearly always because the answer omits a key fact (e.g. q022-style omissions), which matches the strict rubric.
+- Faithfulness and citation accuracy have almost no failures, so their agreement is weakly informative.
+- Gold labels still `llm_assisted`; TDRA permission pending.
 
 **Notes for next phase**
-- Index version `2026-11-11-v2`, embeddings local only. Stored answer details for dev and test (`*_answers_rewrite_*`) are in `eval/results/details/`; phase 11 grades these.
-- The multi-turn demo example only works because the follow-up is rewritten; q023's follow-up ("and may they work at night?") fails, so avoid it.
-- CPU rerank latency still ~12 s (phase 16).
+- Phase 12 needs Docker Desktop installed. Index version `2026-11-11-v2`, GATE_TAU 0.298 unchanged.
 
-**Commit:** see PR
+**Commit:** see PR #14
 
 ## History
 
@@ -59,6 +55,7 @@ Answers (gen `gpt-6-luna`, judge `gpt-6.1-terra`): test refusal 90% -> 95%, fait
 | 08 dense-hybrid | 2026-11-12 | done | hybrid recall@5 88% test / 94% dev, xling 94%; $0.04 |
 | 09 rerank-gate | 2026-11-12 | done* | tau 0.298 (dev F1 0.83), test mrr@10 0.82; $0.04 |
 | 10 multiturn | 2026-11-13 | done | multi-turn recall@5 test 33% -> 67%, dev 100%; $0.12 |
+| 11 judge-validation | 2026-11-13 | done* | judge vs Claude-graded: correctness 98%, κ 0.96 (not human); $0 |
 ---
 
 ## Template (copy into "Latest handoff")

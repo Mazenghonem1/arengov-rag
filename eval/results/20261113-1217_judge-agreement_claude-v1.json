@@ -1,0 +1,136 @@
+{
+  "label": "claude-v1",
+  "timestamp": "2026-11-13T12:17:30",
+  "criteria": {
+    "faithfulness": {
+      "n": 45,
+      "agreement": 1.0,
+      "kappa": null,
+      "confusion": {
+        "jp_hp": 45,
+        "jp_hf": 0,
+        "jf_hp": 0,
+        "jf_hf": 0
+      },
+      "judge_pass": 45,
+      "human_pass": 45,
+      "disagreements": [],
+      "dev": {
+        "n": 30,
+        "agreement": 1.0,
+        "kappa": null,
+        "confusion": {
+          "jp_hp": 30,
+          "jp_hf": 0,
+          "jf_hp": 0,
+          "jf_hf": 0
+        },
+        "judge_pass": 30,
+        "human_pass": 30,
+        "disagreements": []
+      },
+      "test": {
+        "n": 15,
+        "agreement": 1.0,
+        "kappa": null,
+        "confusion": {
+          "jp_hp": 15,
+          "jp_hf": 0,
+          "jf_hp": 0,
+          "jf_hf": 0
+        },
+        "judge_pass": 15,
+        "human_pass": 15,
+        "disagreements": []
+      }
+    },
+    "correctness": {
+      "n": 45,
+      "agreement": 0.9777777777777777,
+      "kappa": 0.9552238805970149,
+      "confusion": {
+        "jp_hp": 24,
+        "jp_hf": 0,
+        "jf_hp": 1,
+        "jf_hf": 20
+      },
+      "judge_pass": 24,
+      "human_pass": 25,
+      "disagreements": [
+        "q015"
+      ],
+      "dev": {
+        "n": 30,
+        "agreement": 1.0,
+        "kappa": 1.0,
+        "confusion": {
+          "jp_hp": 16,
+          "jp_hf": 0,
+          "jf_hp": 0,
+          "jf_hf": 14
+        },
+        "judge_pass": 16,
+        "human_pass": 16,
+        "disagreements": []
+      },
+      "test": {
+        "n": 15,
+        "agreement": 0.9333333333333333,
+        "kappa": 0.8648648648648649,
+        "confusion": {
+          "jp_hp": 8,
+          "jp_hf": 0,
+          "jf_hp": 1,
+          "jf_hf": 6
+        },
+        "judge_pass": 8,
+        "human_pass": 9,
+        "disagreements": [
+          "q015"
+        ]
+      }
+    },
+    "citation_accuracy": {
+      "n": 45,
+      "agreement": 1.0,
+      "kappa": 1.0,
+      "confusion": {
+        "jp_hp": 44,
+        "jp_hf": 0,
+        "jf_hp": 0,
+        "jf_hf": 1
+      },
+      "judge_pass": 44,
+      "human_pass": 44,
+      "disagreements": [],
+      "dev": {
+        "n": 30,
+        "agreement": 1.0,
+        "kappa": 1.0,
+        "confusion": {
+          "jp_hp": 29,
+          "jp_hf": 0,
+          "jf_hp": 0,
+          "jf_hf": 1
+        },
+        "judge_pass": 29,
+        "human_pass": 29,
+        "disagreements": []
+      },
+      "test": {
+        "n": 15,
+        "agreement": 1.0,
+        "kappa": null,
+        "confusion": {
+          "jp_hp": 15,
+          "jp_hf": 0,
+          "jf_hp": 0,
+          "jf_hf": 0
+        },
+        "judge_pass": 15,
+        "human_pass": 15,
+        "disagreements": []
+      }
+    }
+  }
+}
