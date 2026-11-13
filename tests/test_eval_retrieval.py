@@ -40,9 +40,16 @@ def test_run(tmp_path, monkeypatch):
         return {"candidates": ranked[:20], "ranked": ranked, "final": ranked[:5]}
 
     monkeypatch.setattr(pipeline, "retrieve", fake)
+    rewrote = []  # multi-turn questions are rewritten by the LLM: stub it (CI has no key)
+    monkeypatch.setattr(
+        eval_retrieval,
+        "rewrite",
+        lambda prev, q, lang: rewrote.append((prev, q, lang)) or (q, None),
+    )
     s = eval_retrieval.run("dev", label="t", cross_lingual=True, record=True)
     assert s["n"] == 2  # q3 unanswerable, q4 is test
     assert seen == [("query q1", "ar"), ("query q2", "en")]  # last turn, opposite language
+    assert rewrote == [(["x"], "query q2", "ar")]  # only the multi-turn question
     # q1: gold at rank 1; q2: gold at rank 7 (outside top 5, inside top 10)
     assert s["metrics"]["recall@5"] == 0.5 and s["metrics"]["recall@20"] == 1.0
     assert abs(s["metrics"]["mrr@10"] - (1 + 1 / 7) / 2) < 1e-9
