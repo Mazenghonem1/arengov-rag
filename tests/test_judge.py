@@ -36,3 +36,54 @@ def test_schema_is_strict_everywhere():
     assert s["additionalProperties"] is False and set(s["required"]) == set(J.CRITERIA)
     for v in s["properties"].values():
         assert v["additionalProperties"] is False and set(v["required"]) == {"reason", "pass"}
+
+
+def test_export_blind(tmp_path):
+    det = tmp_path / "eval" / "details"
+    det.mkdir(parents=True)
+    (tmp_path / "eval" / "a.json").write_text(json.dumps({"index_version": "v"}))
+    ok = {k: {"reason": "SECRETREASON", "pass": k != "correctness"} for k in J.CRITERIA}
+    rows = [
+        {
+            "id": "q1",
+            "answerable": True,
+            "refused": False,
+            "error": None,
+            "answer": "A1 [1]",
+            "final_chunk_ids": ["c1"],
+            "judge": ok,
+        },
+        {
+            "id": "q2",
+            "answerable": True,
+            "refused": True,
+            "error": None,
+            "answer": "no",
+            "final_chunk_ids": [],
+            "judge": None,
+        },
+        {
+            "id": "q3",
+            "answerable": False,
+            "refused": False,
+            "error": None,
+            "answer": "x",
+            "final_chunk_ids": [],
+            "judge": None,
+        },
+    ]
+    (det / "a.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
+    qs = {
+        i: {"id": i, "split": "dev", "turns": ["Q?"], "reference_answer": "R", "key_facts": ["f"]}
+        for i in ("q1", "q2", "q3")
+    }
+    out = tmp_path / "g"
+    n = J.export_blind([det / "a.jsonl"], out, questions=qs, chunks_by_id={"c1": CHUNKS[0]})
+    assert n == 1
+    md = (out / "items.md").read_text("utf-8")
+    assert (
+        "## Item 1" in md and "A1 [1]" in md and "SECRETREASON" not in md and "faithfulness:" in md
+    )
+    key = json.loads((out / "key.json").read_text("utf-8"))
+    assert key["1"]["q_id"] == "q1" and key["1"]["judge"]["correctness"] is False
+    assert (out / "grades.csv").read_text().splitlines()[1] == "1,,,,"

@@ -121,6 +121,12 @@ def _eval_answers(args):
         sys.exit("eval-answers needs --split and --label (or --rejudge DETAILS)")
 
 
+def _judge_export(args):
+    from arengov.judge import export_blind
+
+    print("items:", export_blind(args.details))
+
+
 def _set_thresholds(args):
     from arengov.eval_answers import set_thresholds
 
@@ -207,6 +213,10 @@ def main(argv=None):
     p.add_argument("--split", choices=["dev", "test"], default="dev")
     p.add_argument("--backend", choices=["openai", "ollama"], default="openai")
     p.set_defaults(func=_pick_tau)
+
+    p = sub.add_parser("judge-export", help="write the blind grading sheet to eval/grading/")
+    p.add_argument("details", nargs="+")
+    p.set_defaults(func=_judge_export)
 
     p = sub.add_parser("set-thresholds", help="write eval/thresholds.json from test summaries")
     p.add_argument("retrieval")
