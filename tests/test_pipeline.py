@@ -68,3 +68,41 @@ def test_gate_passes_above_tau(monkeypatch):
     monkeypatch.setattr(pipeline, "retrieve", lambda q: {"final": [(0, 1.0)], "top_score": 0.9})
     r = pipeline.answer([{"role": "user", "content": "how do I renew?"}])
     assert not r["refused"]
+
+
+def _spy(monkeypatch):
+    _setup(monkeypatch, "Yes [1].")
+    seen = {}
+    monkeypatch.setattr(
+        pipeline,
+        "retrieve",
+        lambda q: seen.setdefault("q", q) and {"final": [(0, 1.0)], "top_score": TOP},
+    )
+    return seen
+
+
+def test_single_message_skips_rewrite(monkeypatch):
+    seen = _spy(monkeypatch)
+    monkeypatch.setattr(pipeline, "rewrite", lambda *a: 1 / 0)
+    pipeline.answer([{"role": "user", "content": "how do I renew?"}])
+    assert seen["q"] == "how do I renew?"
+
+
+def test_history_is_rewritten_and_lang_is_original(monkeypatch):
+    seen = _spy(monkeypatch)
+    calls = []
+
+    def fake_rewrite(prev, q, lang):
+        calls.append((prev, q, lang))
+        return "renew the golden visa", LLMResult("x", 3, 2, 1.0, 0.002, "m")
+
+    monkeypatch.setattr(pipeline, "rewrite", fake_rewrite)
+    msgs = [
+        {"role": "user", "content": "golden visa?"},
+        {"role": "assistant", "content": "long answer"},
+        {"role": "user", "content": "وماذا عن تجديدها؟"},
+    ]
+    r = pipeline.answer(msgs)
+    assert calls == [(["golden visa?"], "وماذا عن تجديدها؟", "ar")]
+    assert seen["q"] == r["rewritten_query"] == "renew the golden visa"
+    assert r["lang"] == "ar" and r["usage"]["cost_usd"] >= 0.002

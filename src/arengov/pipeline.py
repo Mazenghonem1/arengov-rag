@@ -4,6 +4,7 @@ from arengov import config
 from arengov.generate import generate, refusal_message
 from arengov.index import load_index
 from arengov.retrieve import collapse_pairs, dense_search, rrf
+from arengov.rewrite import rewrite
 from arengov.text_ar import detect_lang, tokenize
 
 
@@ -77,9 +78,14 @@ def _refusal(chunks):
 
 def answer(messages, answer_lang="auto"):
     t0 = time.perf_counter()
-    question = next(m["content"] for m in reversed(messages) if m["role"] == "user")
-    lang = detect_lang(question) if answer_lang == "auto" else answer_lang
-    r = retrieve(question)
+    user_msgs = [m["content"] for m in messages if m["role"] == "user"]
+    question = user_msgs[-1]
+    prev = user_msgs[:-1][-config.HISTORY_MAX_TURNS :]
+    lang = (
+        detect_lang(question) if answer_lang == "auto" else answer_lang
+    )  # original, not rewritten
+    rewritten, rw = rewrite(prev, question, lang) if prev else (question, None)
+    r = retrieve(rewritten)
     index_chunks = load_index().chunks
     chunks = [index_chunks[i] for i, _ in r["final"]]
     tau, top = config.GATE_TAU, r.get("top_score")
@@ -88,7 +94,7 @@ def answer(messages, answer_lang="auto"):
         citations, text, reason = _refusal(chunks), refusal_message(lang), "gate"
         refused, invalid = True, []
     else:
-        g = generate(question, chunks, lang)
+        g = generate(rewritten, chunks, lang)
         invalid = g["invalid_citations"]
         if g["no_answer"]:
             citations, text, reason = _refusal(chunks), refusal_message(lang), "no_answer"
@@ -97,6 +103,7 @@ def answer(messages, answer_lang="auto"):
             citations = [_citation(n, chunks[n - 1]) for n in g["cited"]]
             text, refused, reason = g["answer"], False, None
     llm = g["llm"] if g else None
+    parts = [x for x in (rw, llm) if x]
     return {
         "answer": text,
         "citations": citations,
@@ -104,12 +111,12 @@ def answer(messages, answer_lang="auto"):
         "refusal_reason": reason,
         "invalid_citations": invalid,  # needed by the citation_valid eval check
         "lang": lang,
-        "rewritten_query": question,
+        "rewritten_query": rewritten,
         "final_chunk_ids": [c["chunk_id"] for c in chunks],
         "usage": {
-            "input_tokens": llm.input_tokens if llm else 0,
-            "output_tokens": llm.output_tokens if llm else 0,
-            "cost_usd": llm.cost_usd if llm else 0.0,
+            "input_tokens": sum(x.input_tokens for x in parts),
+            "output_tokens": sum(x.output_tokens for x in parts),
+            "cost_usd": sum(x.cost_usd for x in parts),
         },
         "latency_ms": (time.perf_counter() - t0) * 1000,
         "snapshot_id": chunks[0]["snapshot_id"] if chunks else None,

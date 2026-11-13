@@ -5,6 +5,7 @@ from datetime import datetime
 
 from arengov import config, pipeline
 from arengov.index import load_index
+from arengov.rewrite import rewrite
 
 ANSWERABLE = ("single", "multi_turn", "mixed_script")
 RESULTS_MD = config.ROOT / "docs" / "results.md"
@@ -72,6 +73,12 @@ def _print_table(s):
         print(f"{name:<20}{v['n']:>4}  {r5:8.0%}  {r20:9.0%}  {mrr:6.2f}")
 
 
+def _query(q):
+    if q["type"] == "multi_turn":
+        return rewrite(q["turns"][:-1][-config.HISTORY_MAX_TURNS :], q["turns"][-1], q["lang"])[0]
+    return q["turns"][-1]
+
+
 def run(
     split,
     *,
@@ -82,7 +89,9 @@ def run(
     label,
     record=False,
     out=None,
+    backend="openai",
 ):
+    config.LLM_BACKEND = backend  # whole run, so a local env never leaks into metrics
     qs = [
         json.loads(line)
         for line in (config.EVAL_DIR / "questions.jsonl").read_text("utf-8").splitlines()
@@ -92,7 +101,7 @@ def run(
     chunks = load_index().chunks
     rows, details = [], []
     for q in qs:
-        query = q["turns"][-1]  # shortcut: no rewriting until phase 10
+        query = _query(q)
         lf = None
         if cross_lingual:
             lf = "en" if q["lang"] == "ar" else "ar"
@@ -175,17 +184,17 @@ def choose_tau(rows):
     return best
 
 
-def pick_tau(split="dev"):
+def pick_tau(split="dev", backend="openai"):
+    config.LLM_BACKEND = backend
     qs = [
         json.loads(line)
         for line in (config.EVAL_DIR / "questions.jsonl").read_text("utf-8").splitlines()
         if line.strip()
     ]
-    # multi-turn last turns aren't rewritten until phase 10
-    qs = [q for q in qs if q["split"] == split and q["type"] != "multi_turn"]
+    qs = [q for q in qs if q["split"] == split]
     rows = []
     for q in qs:
-        r = pipeline.retrieve(q["turns"][-1], mode="hybrid", use_rerank=True)
+        r = pipeline.retrieve(_query(q), mode="hybrid", use_rerank=True)
         rows.append((r["top_score"], not q["answerable"], q["id"]))
     for s, refuse, qid in sorted(rows):
         print(f"{s:.4f}  {'REFUSE' if refuse else 'answer'}  {qid}")

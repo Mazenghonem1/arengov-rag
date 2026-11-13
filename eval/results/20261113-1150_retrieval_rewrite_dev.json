@@ -1,0 +1,54 @@
+{
+  "kind": "retrieval",
+  "label": "rewrite",
+  "split": "dev",
+  "index_version": "2026-11-11-v2",
+  "git_sha": "cd5f60c",
+  "timestamp": "2026-11-13T11:50:47",
+  "config": {
+    "mode": "hybrid",
+    "use_rerank": true,
+    "use_norm": true,
+    "cross_lingual": false
+  },
+  "n": 34,
+  "metrics": {
+    "recall@5": 0.9705882352941176,
+    "recall@20": 0.9705882352941176,
+    "mrr@10": 0.9362745098039216
+  },
+  "by_lang": {
+    "ar": {
+      "recall@5": 0.9411764705882353,
+      "recall@20": 0.9411764705882353,
+      "mrr@10": 0.9411764705882353,
+      "n": 17
+    },
+    "en": {
+      "recall@5": 1.0,
+      "recall@20": 1.0,
+      "mrr@10": 0.9313725490196079,
+      "n": 17
+    }
+  },
+  "by_type": {
+    "mixed_script": {
+      "recall@5": 1.0,
+      "recall@20": 1.0,
+      "mrr@10": 1.0,
+      "n": 3
+    },
+    "multi_turn": {
+      "recall@5": 1.0,
+      "recall@20": 1.0,
+      "mrr@10": 0.9285714285714286,
+      "n": 7
+    },
+    "single": {
+      "recall@5": 0.9583333333333334,
+      "recall@20": 0.9583333333333334,
+      "mrr@10": 0.9305555555555555,
+      "n": 24
+    }
+  }
+}

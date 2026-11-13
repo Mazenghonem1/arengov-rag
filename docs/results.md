@@ -20,3 +20,7 @@ One row per recorded run (`--record`). Retrieval rows fill the retrieval columns
 | 2026-11-12 | hybrid-rerank-xling | test | 2026-11-11-v2 | hybrid | yes | yes | yes | 94% | 100% | 0.80 | — | — | — | — | — | — | — | — | — | — |
 | 2026-11-12 | hybrid-rerank | dev | 2026-11-11-v2 | hybrid | no | yes | yes | 97% | 97% | 0.87 | — | — | — | — | — | — | — | — | — | — |
 | 2026-11-12 | rerank-gate | test | 2026-11-11-v2 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 90% | 100% | 100% | 93% | 50% | 93% | 2890 | $0.00016 |
+| 2026-11-13 | rewrite | test | 2026-11-11-v2 | hybrid | no | yes | yes | 94% | 100% | 0.88 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-13 | rewrite | dev | 2026-11-11-v2 | hybrid | no | yes | yes | 97% | 97% | 0.94 | — | — | — | — | — | — | — | — | — | — |
+| 2026-11-13 | rewrite | test | 2026-11-11-v2 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 95% | 100% | 100% | 100% | 53% | 100% | 2883 | $0.00018 |
+| 2026-11-13 | rewrite | dev | 2026-11-11-v2 | — | — | — | — | — | — | — | openai | gpt-6.1-terra | 90% | 100% | 100% | 100% | 53% | 97% | 2601 | $0.00017 |
